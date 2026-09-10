@@ -1,84 +1,138 @@
-<!---
-This file was generated from `meta.yml`, please do not edit manually.
-Follow the instructions on https://github.com/coq-community/templates to regenerate.
---->
-# minirubik
+# Certified 3×3×3 Rubik’s cube solver
 
-[![Docker CI][docker-action-shield]][docker-action-link]
+This repository models all 54 stickers of a 3×3×3 cube and proves that its
+solver returns a shortest solution for every state reachable by legal moves.
+It builds with **Rocq 9.0.0** and the standard library; BigNums is no longer
+required.
 
-[docker-action-shield]: https://github.com/thery/minirubik/actions/workflows/docker-action.yml/badge.svg?branch=master
-[docker-action-link]: https://github.com/thery/minirubik/actions/workflows/docker-action.yml
-
-
-
-
-This is a certified solver for the Rubik 2x2
-
-The formalisation is explained in the file [paper.pdf](https://github.com/thery/minirubik/blob/master/paper.pdf),
-
-A position of the cube is encoded by the constructor
-``State`` that takes 7 cubes (`C1`, `C2`, `C3`, `C4`, `C5`, `C6`, `C7`)
-and their respective orientation (`O1`, `O2`, `O3`).
-
-For example, the initial configuration is
-
-``State C1 C2 C3 C4 C5 C6 C7 O1 O1 O1 O1 O1 O1 O1``
-
-Swapping two adjacent corners gives:
-
-``State C2 C1 C3 C4 C5 C6 C7 O1 O1 O1 O1 O1 O1 O1``
-
-Swapping two opposite corners gives
-
-``State C7 C2 C3 C4 C5 C6 C1 O1 O1 O1 O1 O1 O1 O1``
-
-There are 3 positive moves that corresponds to the right face, the back face and the down face.
-Each move can be applied once (`Right`, `Back`, `Down`),
-twice (`Right2`, `Back2`, `Down2`) or three times
-(`Rightm1`, `Backm1`, `Downm1`) and is still considered
-as a single move.
-
-For example, applying the move `Right` to the initial
-configuration gives
-
-``State C2 C5 C3 C1 C4 C6 C7 O2 O3 O1 O3 O2 O1 O1``
-
-The ``solve`` function takes a position and returns
-a list of minimal length of the moves to return to
-the initial position.
-
-For example, solving
-
-``State C2 C1 C3 C4 C5 C6 C7 O1 O1 O1 O1 O1 O1 O1``
-
-returns a list of length 11
-
-``Right :: Backm1 :: Down2 :: Rightm1 :: Back
-:: Rightm1 :: Backm1 :: Right :: Down2 :: Right :: Back :: nil``
-
-Other examples are given in the file [Example.v](https://github.com/thery/minirubik/blob/master/Example.v)
-
-## Meta
-
-- Author(s):
-  - Laurent Théry
-- License: [MIT License](LICENSE)
-- Compatible Rocq/Coq versions: 9.1 or later
-- Additional dependencies:
-  - [BigNums](https://github.com/coq/bignums)
-- Rocq/Coq namespace: `minirubik`
-- Related publication(s): none
-
-## Building and installation instructions
-
-To build and install manually, do:
-
-``` shell
-git clone https://github.com/thery/minirubik.git
-cd minirubik
-make   # or make -j <number-of-cores-on-your-machine> 
-make install
+```sh
+opam exec -- make -j2
+opam exec -- make check
 ```
 
+`make check` checks the generated move tables and independently checks the
+compiled proofs with `coqchk` (the checker command supplied by Rocq 9.0). Python 3 is needed only for the table check
+and regeneration. `make install` installs the `minirubik` namespace.
 
+## Model and moves
 
+A `state` contains six 3×3 sticker grids in the order **Up, Right, Front,
+Down, Left, Back**:
+
+```coq
+Definition state := (triple grid * triple grid)%type.
+Definition grid := triple (triple color).
+```
+
+Each grid contains three rows, each with three colors. Rows run top to bottom
+and columns left to right when viewing the face from outside. Colors use the
+six face names. `init_state` has each face uniformly colored with its own name.
+The coordinate convention is specified in [Geometry.v](Geometry.v): +x is
+right, +y is up, and +z is front.
+
+A move is a pair `(face, turns)`, where `turns` is `CW`, `Half`, or `CCW`.
+There are 18 moves. Clockwise is viewed from outside the moving face. All
+moves cost one, including half turns: solutions are minimal in the **face-turn
+metric**. Centers are fixed; all eight corners and twelve edges move.
+
+`m2f m s` applies a move, `run s moves` applies a sequence from left to right,
+and `inverse moves` reverses a sequence and inverts each move.
+
+`valid_state s` means that some sequence of legal moves takes `init_state` to
+`s`. This is a reachability definition of physical validity, not a separate
+algebraic test of corner twists, edge flips, and permutation parity. Arbitrary
+sticker assignments can be represented, but the completeness theorem only
+requires this physical validity predicate. Whole-cube rotations are not moves;
+the solved center colors fix the reference frame.
+
+## Using the solver
+
+```coq
+From Stdlib Require Import List.
+From minirubik Require Import Solver.
+Import ListNotations.
+
+Definition scrambled := run init_state [(Right, CW); (Up, CW)].
+
+Eval lazy in solve scrambled.
+(* Some [(Up, CCW); (Right, CCW)] *)
+
+Eval vm_compute in solve_bounded 2 scrambled.
+(* Some [(Up, CCW); (Right, CCW)] *)
+
+Eval vm_compute in solve_bounded 1 scrambled.
+(* None: no solution of length at most 1 *)
+```
+
+`solve : state -> option (list move)` uses iterative deepening. A successful
+result is globally shortest. It searches up to a proved finite-state bound,
+so `None` means that the cube is invalid. No scramble history or validity
+proof is an input to the computation.
+
+**This is an exhaustive reference solver, not a fast solver for arbitrary
+scrambles.** The branching factor is 18 and the general termination bound is
+`6^54`, the size of the unrestricted sticker space. That bound is deliberately
+loose; it does not claim the cube’s actual diameter. Deep scrambles and
+exhaustive invalidity checks are computationally impractical.
+
+Use `lazy` with `solve`: it searches shallow depths before evaluating the
+rest of the enormous finite-state bound. Eager evaluation such as `vm_compute`
+of `solve` attempts to materialize that bound. For controlled computations,
+use `solve_bounded limit s` with `vm_compute`. A bounded success is still
+globally shortest; bounded `None` means only that the required depth exceeds
+`limit`. [Example.v](Example.v) contains executable regressions.
+
+## Proof guarantees
+
+All proofs are checked by Rocq, with no added axioms, admitted proofs, or
+unchecked computation casts.
+
+| Theorem | Guarantee |
+| --- | --- |
+| `quarter_geometry` | Every sticker follows a clockwise 3D outer-layer rotation. |
+| `quarter_four`, `moves_inv` | Four quarter turns are identity; every move has an inverse. |
+| `valid_centers` | Legal sequences preserve the solved centers. |
+| `solve_sound` | Every returned sequence reaches `init_state`. |
+| `solve_complete` | Every valid state receives a solution. |
+| `solve_minimal`, `solve_init` | No solving sequence is shorter than the returned sequence. |
+| `solve_length` | Returned lengths satisfy the proved finite-state bound. |
+| `solve_none` | Unbounded failure is equivalent to physical invalidity. |
+| `solve_bounded_spec`, `solve_bounded_none` | Bounded results are shortest; failure excludes every solution within the limit. |
+
+A shortest path cannot revisit a state. Enumerating the finite sticker type
+therefore bounds a shortest solution whenever any solution exists. This proves
+termination and completeness without precomputing the cube graph or trusting
+a numerical diameter. The build prints the assumptions of the principal
+theorems; each reports `Closed under the global context`.
+
+The move tables in [BasicRubik.v](BasicRubik.v) are generated by
+[scripts/generate_moves.py](scripts/generate_moves.py). Regenerate them with
+`python3 scripts/generate_moves.py`. The generator is not part of the proof
+trust boundary: [Geometry.v](Geometry.v) checks the tables against a separate
+geometric specification inside Rocq.
+
+## Source documentation and style
+
+Every Rocq declaration has a one- or two-line Rocqdoc comment explaining its
+purpose. The source is organized into small thematic sections, with explicit
+public types, consistent proof indentation, and one branch per line for
+multiline matches. Generated move tables follow the same style.
+
+```sh
+opam exec -- make html       # Browse html/toc.html for the API documentation
+python3 scripts/generate_moves.py --check
+```
+
+Keep comments focused on intuition, assumptions, or guarantees. Update the
+move generator when changing generated code, then run `make check` to verify
+both reproducibility and the proofs.
+
+## Migration from the 2×2×2 version
+
+The old seven-corner `State` constructor, nine-move alphabet, packed 63-bit
+tables, and 11-move bound have been replaced. `solve` now returns an option so
+that invalid sticker assignments have an explicit result. The obsolete
+`Rubik63.v` and unbuilt `Solver31.v` implementations have been removed.
+
+The original [paper.pdf](paper.pdf) describes the historical 2×2×2 algorithm;
+it does not describe this implementation. Original author: Laurent Théry.

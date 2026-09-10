@@ -1,6 +1,5 @@
--arg -w -arg yes 
 -R . minirubik
 BasicRubik.v
-Example.v
-Rubik63.v
+Geometry.v
 Solver.v
+Example.v

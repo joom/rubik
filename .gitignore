@@ -1,6 +1,17 @@
-*.vo
-*.glob
+# Rocq compilation artifacts.
 *.aux
+*.glob
+*.vo
+*.vok
+*.vos
+.lia.cache
+
+# Generated build files and documentation.
 .coqdeps.d
+.Makefile.coq.d
 Makefile.coq
 Makefile.coq.conf
+html/
+
+# Python bytecode.
+__pycache__/

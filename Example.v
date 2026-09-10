@@ -1,23 +1,100 @@
-(*
-Require Import Int31 List BasicRubik Rubik31 Solver.
-*)
-From Stdlib Require Import PrimInt63 List.
-Require Import BasicRubik Rubik63 Solver.
+From Stdlib Require Import List.
+From minirubik Require Import Geometry Solver.
+Import ListNotations.
 
-(* Just to compute the state *)
-Time Compute solve init_state.
+(** * Executable solver examples *)
 
-(* swapping two adjacent corners *)
-Time Compute solve (State C2 C1 C3 C4 C5 C6 C7 O1 O1 O1 O1 O1 O1 O1).
+(** An already solved cube needs no moves. *)
+Example solved : solve init_state = Some [].
+Proof.
+  lazy; reflexivity.
+Qed.
 
-(* swap two opposite corners *)
-Time Compute solve (State C7 C2 C3 C4 C5 C6 C1 O1 O1 O1 O1 O1 O1 O1).
+(** One clockwise right turn is solved by its inverse. *)
+Example right_turn : solve (m2f (Right, CW) init_state) = Some [(Right, CCW)].
+Proof.
+  lazy; reflexivity.
+Qed.
 
-Time Compute solve (State C2 C5 C3 C1 C4 C6 C7 O2 O3 O1 O3 O2 O1 O1).
+(** A front half turn is undone by the same half turn. *)
+Example front_half_turn : solve (m2f (Front, Half) init_state) = Some [(Front, Half)].
+Proof.
+  lazy; reflexivity.
+Qed.
 
-Time Compute solve (State C1 C2 C3 C5 C6 C7 C4 O1 O1 O1 O2 O3 O2 O3).
+(** A two-face scramble is solved by reversing and inverting its moves. *)
+Example two_turns :
+  solve (run init_state [(Right, CW); (Up, CW)]) = Some [(Up, CCW); (Right, CCW)].
+Proof.
+  lazy; reflexivity.
+Qed.
 
-Time Compute solve (State C1 C3 C6 C4 C2 C5 C7 O1 O1 O1 O1 O1 O1 O1).
+(** All 18 single-turn scrambles have the expected one-move solution. *)
+Example every_single_turn m : solve (m2f m init_state) = Some [minv m].
+Proof.
+  destruct m as [f t]; destruct f, t; lazy; reflexivity.
+Qed.
 
-Time Compute solve (State C7 C6 C5 C4 C3 C2 C1 O1 O1 O1 O1 O1 O1 O1).
+(** A sufficient explicit limit recovers the shortest two-move solution. *)
+Example bounded_shortest :
+  solve_bounded 2 (run init_state [(Right, CW); (Up, CW)]) =
+    Some [(Up, CCW); (Right, CCW)].
+Proof.
+  vm_compute; reflexivity.
+Qed.
 
+(** A one-move allowance cannot solve this two-face scramble. *)
+Example insufficient_depth :
+  solve_bounded 1 (run init_state [(Right, CW); (Up, CW)]) = None.
+Proof.
+  vm_compute; reflexivity.
+Qed.
+
+(** Three interacting faces exercise search beyond single-turn cases. *)
+Example three_faces :
+  solve_bounded 3 (run init_state [(Front, CW); (Right, Half); (Up, CCW)]) =
+    Some [(Up, CW); (Right, Half); (Front, CCW)].
+Proof.
+  vm_compute; reflexivity.
+Qed.
+
+(** * Sticker movement *)
+
+(** A front clockwise turn carries the upper front edge onto the right face. *)
+Example front_edge :
+  sticker_at (quarter Front init_state) (Right, Mid, Low) = Up.
+Proof.
+  reflexivity.
+Qed.
+
+(** The same turn carries the upper front right corner onto the right face. *)
+Example front_corner :
+  sticker_at (quarter Front init_state) (Right, High, Low) = Up.
+Proof.
+  reflexivity.
+Qed.
+
+(** * Invalid states *)
+
+(** A uniformly colored cube is representable but violates the fixed-center
+    invariant. *)
+Definition monochrome : state :=
+  (Triple (solid Up) (solid Up) (solid Up),
+   Triple (solid Up) (solid Up) (solid Up)).
+
+(** The center invariant proves total search rejects the monochrome cube. *)
+Example invalid_cube : solve monochrome = None.
+Proof.
+  apply solve_none; intro H.
+  pose proof (valid_centers monochrome H Right) as E; discriminate E.
+Qed.
+
+(** * Proof assumption audit *)
+
+(** Every theorem below must report that it is closed under the global context. *)
+Print Assumptions quarter_geometry.
+Print Assumptions solve_init.
+Print Assumptions solve_minimal.
+Print Assumptions solve_length.
+Print Assumptions solve_none.
+Print Assumptions solve_bounded_spec.

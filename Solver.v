@@ -1,125 +1,281 @@
-(*
-Require Import Int31 List BasicRubik Rubik31.
-*)
-From Stdlib Require Import PrimInt63 List.
-Require Import BasicRubik Rubik63.
+From Stdlib Require Import Arith Lia List.
+From minirubik Require Export BasicRubik.
+Import ListNotations.
 
-CoInductive val12 := Mval12: tc2 * tc2 -> val12.
+(** * Depth-limited search *)
 
-Definition make_val12 := Mval12 (iter 12).
+(** Try candidates in order and return the first successful result. *)
+Fixpoint choose {A B} (f : A -> option B) (xs : list A) : option B :=
+  match xs with
+  | [] => None
+  | x :: xs =>
+      match f x with
+      | Some y => Some y
+      | None => choose f xs
+      end
+  end.
 
-Definition s11 := match make_val12 with Mval12 x => fst x end.
-Definition l11 := match make_val12 with Mval12 x => snd x end.
-
-Lemma s11_l11: (s11,l11) = iter 12.
+(** A successful choice comes from a candidate actually present in the list. *)
+Lemma choose_some {A B} (f : A -> option B) xs y :
+  choose f xs = Some y -> exists x, In x xs /\ f x = Some y.
 Proof.
-unfold s11, l11, make_val12; case (iter 12);
- intros; apply refl_equal.
+  induction xs as [| x xs IH]; simpl; [discriminate |].
+  destruct (f x) eqn:E.
+  - intro H; inversion H; subst; exists x; auto.
+  - intro H; destruct (IH H) as [z [Hz Ez]]; exists z; auto.
 Qed.
 
-Lemma l11_ok: l11 = OTC2.
+(** Choice fails exactly when every available candidate fails. *)
+Lemma choose_none {A B} (f : A -> option B) xs :
+  choose f xs = None <-> forall x, In x xs -> f x = None.
 Proof.
-native_cast_no_check (refl_equal OTC2).
-Time Qed.
-
-Lemma s11_correct: (s11, OTC2) = iter 12.
-Proof.
-apply trans_equal with (s11,l11).
-  apply f_equal2 with (f := @pair _ _).
-    now apply refl_equal.
-  apply sym_equal.
-  now exact l11_ok. 
-exact s11_l11.
-Time Qed.
-
-Lemma reach11 s : reachable s -> nlreachable 11 s.
-Proof.
-revert s.
-assert (F1: forall n ss, (ss, OTC2) = iter (S n) ->
-              forall s, reachable s -> nlreachable n s).
-  intros n ss Hss s Hs; generalize Hss (iter_final (S n));
-    case iter.
-  intros s1 s2; case s2; auto.
-  now intros t1 t2 HH; discriminate HH.
-intros; apply F1 with s11.
-  now exact s11_correct.
-exact H.
+  induction xs as [| x xs IH]; simpl; [tauto |].
+  destruct (f x) eqn:E; split; try discriminate.
+  - intro H; specialize (H x (or_introl eq_refl)); congruence.
+  - intros H z [<- | Hz]; auto; apply IH; auto.
+  - intro H; apply IH; intros; apply H; auto.
 Qed.
 
-Lemma s11_all : tc2all s11 = true.
-Proof.
-native_cast_no_check (refl_equal true).
-Time Qed.
+(** Try all move sequences within a depth limit, stopping at the first solution. *)
+Fixpoint search (depth : nat) (s : state) : option (list move) :=
+  if state_eq_dec s init_state then Some []
+  else
+    match depth with
+    | 0 => None
+    | S n => choose (fun m => option_map (cons m) (search n (m2f m s))) Movel
+    end.
 
-Lemma valid11 s : valid_state s -> reachable s.
+(** A successful depth-limited search solves the cube within its allowance. *)
+Lemma search_sound n s p : search n s = Some p ->
+  run s p = init_state /\ length p <= n.
 Proof.
-revert s.
-assert (F1: forall n ss, (ss, OTC2) = iter n -> 
-              tc2all ss = true ->
-              forall s, valid_state s -> reachable s).
-  intros n ss Hss Hc s Hs.
-  apply nlreachable_reachable with n; auto.
-  apply (iter_true_reachable n s Hs).
-  rewrite <- Hss; simpl fst.
-  generalize (encode_valid _ Hs); case (encode_state s).
-  intros (l1,l2) p (Hp1, (Hp2, Hp3)).
-  now apply checktc2_all; auto.
-intros s Hs.
-exact (F1 12%nat s11 s11_correct s11_all s Hs).
+  revert s p; induction n as [| n IH]; intros s p; cbn [search];
+    destruct (state_eq_dec s init_state) as [E | E].
+  - intro H; inversion H; subst; simpl; auto.
+  - discriminate.
+  - intro H; inversion H; subst; simpl; auto with arith.
+  - intro H; apply choose_some in H; destruct H as [m [_ H]].
+    destruct (search n (m2f m s)) as [q |] eqn:Q; simpl in H; try discriminate.
+    inversion H; subst; specialize (IH _ _ Q); simpl; intuition lia.
 Qed.
 
-Lemma validreach11 s : valid_state s -> nlreachable 11 s.
-intros; apply reach11; apply valid11; auto.
+(** A solution within the depth limit prevents search from failing. *)
+Lemma search_complete n s p :
+  run s p = init_state -> length p <= n -> search n s <> None.
+Proof.
+  revert s p; induction n as [| n IH]; intros s p Hp Hlen;
+    cbn [search]; destruct (state_eq_dec s init_state) as [E | E]; try discriminate.
+  - destruct p; cbn [run fold_left length] in *; [contradiction | lia].
+  - destruct p as [| m p]; cbn [run fold_left length] in *; [contradiction |].
+    intro H; rewrite choose_none in H; specialize (H m (moves_complete m)).
+    destruct (search n (m2f m s)) eqn:Q; simpl in H; try discriminate.
+    eapply IH; eauto; lia.
 Qed.
 
-CoInductive val11 := Mval11: tc2 * tc2 * tc2 -> val11.
+(** * Shortest paths and finiteness *)
 
-Definition make_val11 := Mval11 (iter2 11).
+(** A shortest solution uses no more moves than any other solving sequence. *)
+Definition shortest (s : state) (p : list move) : Prop :=
+  run s p = init_state /\
+  forall q, run s q = init_state -> length p <= length q.
 
-Definition ss := match make_val11 with Mval11 x => fst x end.
-
-Definition s1 := fst ss.
-Definition s2 := snd ss.
-
-Lemma s12: (s1,s2) = fst (iter2 11).
+(** If any solution fits a finite limit, a shortest one fits that limit too. *)
+Lemma shortest_exists n s :
+  (exists p, run s p = init_state /\ length p <= n) ->
+  exists p, shortest s p /\ length p <= n.
 Proof.
-unfold s1, s2, ss, make_val11; case (iter2 11); simpl; auto.
-intros p; case p; auto.
+  induction n as [| n IH]; intros [p [Hp Hlen]].
+  - exists p; unfold shortest; repeat split; auto; lia.
+  - destruct (search n s) as [q |] eqn:E.
+    + destruct (search_sound _ _ _ E) as [Hq Lq].
+      destruct (IH (ex_intro _ q (conj Hq Lq))) as [r [Hr Lr]].
+      exists r; split; auto; lia.
+    + exists p; split; auto; split; auto.
+      intros q Hq; destruct (Nat.le_gt_cases (length q) n); [| lia].
+      exfalso; eapply search_complete; eauto.
 Qed.
 
-Definition solve s := tc2_solve 11 s s1 s2.
+(** Record the state before each move, excluding the final endpoint. *)
+Fixpoint visits (s : state) (p : list move) : list state :=
+  match p with
+  | [] => []
+  | m :: p => s :: visits (m2f m s) p
+  end.
 
-Theorem solve_eq : forall s, solve s = tc2_solve 11 s s1 s2.
+(** There is one recorded departure state for every move in a path. *)
+Lemma visits_length s p : length (visits s p) = length p.
 Proof.
-intros s; unfold solve; apply refl_equal.
+  revert s; induction p; simpl; auto.
 Qed.
 
-Lemma solve_init s :
-  valid_state s -> 
-  fold_left (fun s a => m2f a s) (solve s) s = init_state.
+(** A visited state can be reached by a prefix of the original sequence. *)
+Lemma visits_split s p t : In t (visits s p) ->
+  exists a b, p = a ++ b /\ run s a = t.
 Proof.
-intros Hs.
-apply trans_equal with
- (fold_left (fun s a => m2f a s) (tc2_solve 11 s s1 s2) s).
-  apply f_equal3 with (f := @fold_left _ _).
-    now apply refl_equal.
-    now exact (solve_eq s).
-  now apply refl_equal.
-apply tc2_solve_init.
-  now exact s12.
-apply validreach11; auto.
+  revert s; induction p as [| m p IH]; intros s H; simpl in H; [contradiction |].
+  destruct H as [<- | H].
+  - exists [], (m :: p); simpl; auto.
+  - destruct (IH _ H) as [a [b [E R]]].
+    exists (m :: a), b; simpl; subst; auto.
 Qed.
 
-Lemma solve_length s :
-  valid_state s -> (length (solve s) <= 11)%nat.
+(** Removing the first move from a shortest solution leaves a shortest suffix. *)
+Lemma shortest_tail s m p : shortest s (m :: p) -> shortest (m2f m s) p.
 Proof.
-intro Hs.
-assert (tmp: forall a b c, (a = b -> a <= c -> b <= c)%nat).
-  now intros a b c H1 H2; rewrite <- H1; auto.
-apply tmp with (length (tc2_solve 11 s s1 s2)).
-  apply f_equal with (f := @length _).
-  now apply sym_equal; exact (solve_eq s).
-apply tc2_solve_length.
-  now exact s12.
-exact Hs.
+  intros [H Min]; split; auto.
+  intros q Hq; specialize (Min (m :: q) Hq); simpl in Min; lia.
+Qed.
+
+(** A shortest path never revisits a state: removing the loop would shorten it. *)
+Lemma shortest_nodup s p : shortest s p -> NoDup (visits s p).
+Proof.
+  revert s; induction p as [| m p IH]; intros s H; simpl; constructor.
+  - intro Hin; destruct (visits_split _ _ _ Hin) as [a [b [E R]]].
+    destruct H as [H Min]; subst p; simpl in H; rewrite run_app, R in H.
+    specialize (Min b H); simpl in Min; rewrite length_app in Min; lia.
+  - apply IH; eapply shortest_tail; eauto.
+Qed.
+
+(** The finite sticker space bounds loop-free paths without assuming a cube
+    diameter. *)
+Definition state_bound : nat := length all_states.
+
+(** Distinct departure states bound the length of any shortest solution. *)
+Lemma shortest_bound s p : shortest s p -> length p <= state_bound.
+Proof.
+  intro H; rewrite <- (visits_length s p); unfold state_bound.
+  apply NoDup_incl_length; [apply shortest_nodup; auto |].
+  intros t _; apply all_states_complete.
+Qed.
+
+(** * Iterative deepening *)
+
+(** Try depths from [depth] through [depth + fuel], returning the first success. *)
+Fixpoint deepen (fuel depth : nat) (s : state) : option (list move) :=
+  match search depth s with
+  | Some p => Some p
+  | None =>
+      match fuel with
+      | 0 => None
+      | S n => deepen n (S depth) s
+      end
+  end.
+
+(** Search the full finite bound for a shortest solution; evaluate with [lazy]. *)
+Definition solve (s : state) : option (list move) :=
+  deepen state_bound 0 s.
+
+(** Iterative deepening returns a solution within the largest depth it tries. *)
+Lemma deepen_sound fuel depth s p : deepen fuel depth s = Some p ->
+  run s p = init_state /\ length p <= fuel + depth.
+Proof.
+  revert depth; induction fuel as [| fuel IH]; intro depth; simpl;
+    destruct (search depth s) as [q |] eqn:E.
+  - intro H; inversion H; subst; apply search_sound in E; auto.
+  - discriminate.
+  - intro H; inversion H; subst; apply search_sound in E; intuition lia.
+  - intro H; specialize (IH _ H); intuition lia.
+Qed.
+
+(** A solution within the final depth guarantees iterative deepening succeeds. *)
+Lemma deepen_complete fuel depth s p :
+  run s p = init_state -> length p <= fuel + depth -> deepen fuel depth s <> None.
+Proof.
+  revert depth; induction fuel as [| fuel IH]; intros depth Hp Hlen; simpl;
+    destruct (search depth s) eqn:E; try discriminate.
+  - intro H; eapply search_complete; eauto.
+  - apply IH; auto; lia.
+Qed.
+
+(** Once all smaller depths are excluded, the first success is globally
+    shortest. *)
+Lemma deepen_minimal fuel depth s p :
+  (forall q, run s q = init_state -> depth <= length q) ->
+  deepen fuel depth s = Some p -> shortest s p.
+Proof.
+  revert depth; induction fuel as [| fuel IH]; intros depth Lower; simpl;
+    destruct (search depth s) as [q |] eqn:E; try discriminate.
+  - intro H; inversion H; subst; apply search_sound in E.
+    destruct E as [Hp Lp]; split; auto; intros q Hq; specialize (Lower q Hq); lia.
+  - intro H; inversion H; subst; apply search_sound in E.
+    destruct E as [Hp Lp]; split; auto; intros q Hq; specialize (Lower q Hq); lia.
+  - apply IH; intros q Hq.
+    destruct (Nat.le_gt_cases (length q) depth); [| lia].
+    exfalso; eapply search_complete; eauto.
+Qed.
+
+(** * Total solver guarantees *)
+
+(** Every returned sequence solves the supplied cube. *)
+Theorem solve_sound s p : solve s = Some p -> run s p = init_state.
+Proof.
+  intro H; exact (proj1 (deepen_sound _ _ _ _ H)).
+Qed.
+
+(** The total solver always chooses a globally shortest solution. *)
+Theorem solve_minimal s p : solve s = Some p -> shortest s p.
+Proof.
+  apply deepen_minimal; intros; lia.
+Qed.
+
+(** Every physically valid cube receives a solution without supplying a witness. *)
+Theorem solve_complete s : valid_state s -> exists p, solve s = Some p.
+Proof.
+  rewrite valid_iff_solvable; intros [p Hp].
+  destruct (shortest_exists (length p) s) as [q [Hq _]]; [exists p; auto |].
+  destruct (solve s) as [r |] eqn:E; [exists r; reflexivity |].
+  exfalso; apply (deepen_complete state_bound 0 s q); auto.
+  - exact (proj1 Hq).
+  - rewrite Nat.add_0_r; apply (shortest_bound s); auto.
+Qed.
+
+(** Validity guarantees a returned solution together with its global optimality. *)
+Theorem solve_init s : valid_state s ->
+  exists p, solve s = Some p /\ run s p = init_state /\
+    forall q, run s q = init_state -> length p <= length q.
+Proof.
+  intro H; destruct (solve_complete s H) as [p E].
+  exists p; split; auto; apply solve_minimal; auto.
+Qed.
+
+(** The finite-state bound applies to every solution the total solver returns. *)
+Theorem solve_length s p : solve s = Some p -> length p <= state_bound.
+Proof.
+  intro H; apply (shortest_bound s); apply solve_minimal; auto.
+Qed.
+
+(** Total search fails exactly on cubes unreachable by legal moves. *)
+Theorem solve_none s : solve s = None <-> ~ valid_state s.
+Proof.
+  split.
+  - intros E H; destruct (solve_complete s H) as [p P]; congruence.
+  - intros H; destruct (solve s) as [p |] eqn:E; auto.
+    exfalso; apply H; apply valid_iff_solvable; exists p; eapply solve_sound; eauto.
+Qed.
+
+(** * Bounded solver guarantees *)
+
+(** Search up to an explicit limit; [None] means no solution fits that limit. *)
+Definition solve_bounded (limit : nat) (s : state) : option (list move) :=
+  deepen limit 0 s.
+
+(** A bounded success is globally shortest and respects the requested limit. *)
+Theorem solve_bounded_spec limit s p : solve_bounded limit s = Some p ->
+  shortest s p /\ length p <= limit.
+Proof.
+  intro H; split.
+  - apply (deepen_minimal limit 0 s p); [intros; lia | exact H].
+  - apply deepen_sound in H; simpl in H; lia.
+Qed.
+
+(** Bounded failure excludes every solution at or below the requested depth. *)
+Theorem solve_bounded_none limit s : solve_bounded limit s = None <->
+  forall p, run s p = init_state -> limit < length p.
+Proof.
+  split.
+  - intros E p Hp; destruct (Nat.le_gt_cases (length p) limit); auto.
+    exfalso; apply (deepen_complete limit 0 s p); auto; lia.
+  - intro H; destruct (solve_bounded limit s) as [p |] eqn:E; auto.
+    apply solve_bounded_spec in E; destruct E as [[Hp _] Lp].
+    specialize (H p Hp); lia.
 Qed.

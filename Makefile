@@ -1,14 +1,19 @@
-ifeq "$(COQBIN)" ""
-	COQBIN=$(dir $(shell which coqtop))
-endif
+ROCQ ?= rocq
+COQCHK ?= coqchk
 
-%: Makefile.coq
+.DEFAULT_GOAL := all
 
 Makefile.coq: _CoqProject
-	$(COQBIN)coq_makefile -f _CoqProject -o Makefile.coq
-
-tests: all
-	@$(MAKE) -C tests -s clean
-	@$(MAKE) -C tests -s all
+	$(ROCQ) makefile -f _CoqProject -o Makefile.coq
 
 -include Makefile.coq
+
+.PHONY: check tests check-generated
+check-generated:
+	python3 scripts/generate_moves.py --check
+
+check: all check-generated
+	$(COQCHK) -silent -R . minirubik \
+	  $(addprefix minirubik.,$(basename $(VFILES)))
+
+tests: check
