@@ -1,19 +1,46 @@
-ROCQ ?= rocq
-COQCHK ?= coqchk
+# Thin entry points over dune. Crane is built in place from the submodule, so
+# nothing here installs over your opam switch.
+
+DUNE ?= dune
+ROCQCHK ?= rocqchk
+BUILD := _build/default
+GENERATED := native/generated
+MODULES := BasicRubik Geometry Solver Viewer Example
 
 .DEFAULT_GOAL := all
+.PHONY: all extract check check-generated tests html install clean
 
-Makefile.coq: _CoqProject
-	$(ROCQ) makefile -f _CoqProject -o Makefile.coq
+# Build and audit the proofs. Needs no C++ toolchain and no Crane.
+all:
+	$(DUNE) build theories
 
--include Makefile.coq
+# Extract the viewer to C++ and publish it where CMake expects to find it.
+# The C++ files are a side effect of compiling Extract.v rather than declared
+# targets, so that compilation has to run instead of being restored from cache.
+extract:
+	rm -f $(BUILD)/native/Extract.vo
+	$(DUNE) build --cache=disabled native/Extract.vo
+	@mkdir -p $(GENERATED)
+	cp $(BUILD)/native/rubik.h $(BUILD)/native/rubik.cpp $(GENERATED)/
 
-.PHONY: check tests check-generated
 check-generated:
 	python3 scripts/generate_moves.py --check
 
+# Recheck the compiled proofs with the kernel, independently of the build.
 check: all check-generated
-	$(COQCHK) -silent -R . minirubik \
-	  $(addprefix minirubik.,$(basename $(VFILES)))
+	$(ROCQCHK) -silent -R $(BUILD)/theories minirubik \
+	  $(addprefix minirubik.,$(MODULES))
 
 tests: check
+
+html:
+	$(DUNE) build @theories/doc
+	@echo "Browse $(BUILD)/theories/minirubik.html/index.html"
+
+install:
+	$(DUNE) build -p rocq-rubik @install
+	$(DUNE) install rocq-rubik
+
+clean:
+	$(DUNE) clean
+	rm -rf $(GENERATED)

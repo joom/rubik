@@ -1,0 +1,5 @@
+; The viewer and its bindings, which need Crane and are not part of the
+; installed package: the proofs above build without either.
+(coq.theory
+ (name minirubik.native)
+ (theories Stdlib Crane ITree ExtLib Paco minirubik))

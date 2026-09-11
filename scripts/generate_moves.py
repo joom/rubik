@@ -99,7 +99,7 @@ def main():
         "--check", action="store_true", help="fail if the checked-in tables are stale"
     )
     args = parser.parse_args()
-    path = Path(__file__).resolve().parent.parent / "BasicRubik.v"
+    path = Path(__file__).resolve().parent.parent / "theories" / "BasicRubik.v"
     source = path.read_text()
     before, rest = source.split(START, 1)
     _, after = rest.split(END, 1)
@@ -107,7 +107,7 @@ def main():
     if args.check:
         if updated != source:
             raise SystemExit(
-                "BasicRubik.v move tables are stale; run scripts/generate_moves.py"
+                "theories/BasicRubik.v move tables are stale; run scripts/generate_moves.py"
             )
     else:
         path.write_text(updated)

@@ -1,5 +1,5 @@
 From Stdlib Require Import List.
-From minirubik Require Import Geometry Solver.
+From minirubik Require Import Geometry Solver Viewer.
 Import ListNotations.
 
 (** * Executable solver examples *)
@@ -98,3 +98,6 @@ Print Assumptions solve_minimal.
 Print Assumptions solve_length.
 Print Assumptions solve_none.
 Print Assumptions solve_bounded_spec.
+Print Assumptions colors_roundtrip.
+Print Assumptions solve_request_correct.
+Print Assumptions accepted_solution_solves.

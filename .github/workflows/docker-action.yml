@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: coq-community/docker-coq-action@v1
         with:
-          opam_file: 'coq-minirubik.opam'
+          opam_file: 'rocq-rubik.opam'
           custom_image: ${{ matrix.image }}
           before_script: |
             startGroup "Kernel and generated-table checks"

@@ -5,13 +5,14 @@
 *.vok
 *.vos
 .lia.cache
-
-# Generated build files and documentation.
-.coqdeps.d
-.Makefile.coq.d
-Makefile.coq
-Makefile.coq.conf
-html/
+_build/
+*.install
 
 # Python bytecode.
 __pycache__/
+
+# Native viewer build outputs.
+build/
+native/generated/
+*.dSYM
+.DS_Store

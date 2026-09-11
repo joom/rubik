@@ -1,5 +1,0 @@
--R . minirubik
-BasicRubik.v
-Geometry.v
-Solver.v
-Example.v

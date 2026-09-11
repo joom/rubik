@@ -1,9 +1,9 @@
 opam-version: "2.0"
 maintainer: "thery@sophia.inria.fr"
 version: "dev"
-homepage: "https://github.com/thery/minirubik"
-dev-repo: "git+https://github.com/thery/minirubik.git"
-bug-reports: "https://github.com/thery/minirubik/issues"
+homepage: "https://github.com/joom/rubik"
+dev-repo: "git+https://github.com/joom/rubik.git"
+bug-reports: "https://github.com/joom/rubik/issues"
 license: "MIT"
 synopsis: "A certified shortest-path solver for the Rubik 3x3x3 cube"
 description: """
@@ -12,13 +12,19 @@ and all 18 face turns. Rocq proofs establish geometric move correctness,
 solver soundness, completeness for reachable states, and global minimality
 in the face-turn metric. The finite exhaustive search is intended as a
 certified reference solver; deep scrambles are computationally expensive.
+
+The package covers the proofs only. The raylib viewer under native/ is built
+separately and needs the Crane submodule.
 """
-build: [make "-j%{jobs}%"]
+build: [
+  ["dune" "build" "-p" name "-j" jobs "@install"]
+]
 run-test: [make "check"]
-install: [make "install"]
 depends: [
-  "coq" {>= "9.0.0"}
+  "dune" {>= "3.21"}
+  "rocq-core" {>= "9.0"}
+  "rocq-stdlib" {>= "9.0"}
   "conf-python-3" {with-test}
 ]
 tags: ["keyword:rubik" "logpath:minirubik"]
-authors: ["Laurent Théry"]
+authors: ["Laurent Théry" "Joomy Korkut"]
