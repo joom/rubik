@@ -9,7 +9,7 @@ From Corelib Require Import PrimString.
 From Stdlib Require Import Arith List Reals.
 From Crane Require Import Mapping.Std Mapping.NatIntStd Mapping.DequeList
   Mapping.ZInt Mapping.Real Monads.ITree.
-From minirubik Require Import BasicRubik Solver Viewer native.Raylib
+From Rubik Require Import BasicRubik Solver Viewer native.Raylib
   native.Job.
 Import ListNotations ITreeNotations.
 Local Open Scope pstring_scope.
@@ -87,7 +87,7 @@ Definition moves_text (cs : list nat) : PrimString.string :=
   match cs with [] => "-" | _ => moves_join cs end.
 
 (** The sentence shown under the search controls. *)
-Definition status_text (st depth : nat) (pending : list nat) : PrimString.string :=
+Definition status_text (st : nat) (pending : list nat) : PrimString.string :=
   match st with
   | 1 => "Searching - keep exploring the view"
   | 2 => match pending with
@@ -95,8 +95,7 @@ Definition status_text (st depth : nat) (pending : list nat) : PrimString.string
          | _ => "Shortest solution found"
          end
   | 3 => "Solved. Nicely done."
-  | 4 => PrimString.cat "No solution within "
-           (PrimString.cat (nat_text depth) " moves")
+  | 4 => "No solution found. Reset the cube."
   | 6 => "Result rejected. Please try again."
   | _ => "Turn a face, or try a short scramble."
   end.
@@ -112,10 +111,11 @@ Definition ink : rl_color := rgb 235 241 249.
 Definition accent : rl_color := rgb 84 217 195.
 Definition cubie_ink : rl_color := rgb 27 31 39.
 
-(** Sticker colors in the model's U/R/F/D/L/B order. *)
+(** Sticker colors in U/R/F/D/L/B order, with white down, blue front, and red right.
+    Swapping both U/D and F/B preserves the physical color scheme's handedness. *)
 Definition palette : list rl_color :=
-  [rgb 241 244 239; rgb 226 60 71; rgb 45 186 118;
-   rgb 247 201 60; rgb 246 133 48; rgb 56 127 230].
+  [rgb 247 201 60; rgb 226 60 71; rgb 56 127 230;
+   rgb 241 244 239; rgb 246 133 48; rgb 45 186 118].
 
 (** The color of one sticker code. *)
 Definition sticker_color (n : nat) : rl_color := nth n palette ink.
@@ -128,15 +128,18 @@ Definition window_w : nat := 1200.
 Definition window_h : nat := 800.
 
 (** Pixel size of the off-screen target that holds the 3D view. *)
-Definition canvas_w : nat := 840.
-Definition canvas_h : nat := 634.
+Definition canvas_w : nat := 868.
+Definition canvas_h : nat := 704.
 
 (** Where that target is blitted in the window. *)
-Definition canvas : rl_rect := Rect 20 102 840 634.
+Definition canvas : rl_rect := Rect 20 24 868 704.
 
 (** The side panel and the left edge of its contents. *)
-Definition panel_box : rl_rect := Rect 864 102 312 634.
-Definition panel_x : R := 884.
+Definition panel_box : rl_rect := Rect 900 24 280 560.
+Definition panel_x : R := 916.
+
+(** One shared track makes the mutually exclusive turn amounts a segmented control. *)
+Definition amount_track : rl_rect := Rect 916 66 248 36.
 
 (** * Buttons *)
 
@@ -154,33 +157,29 @@ Definition panel_command : nat := 100.
 
 (** The three turn amounts that arm the face buttons. *)
 Definition amount_button (i : nat) (busy : bool) (turn : nat) : button :=
-  Button (Rect (panel_x + INR i * 92)%R 150 84 32)
+  Button (Rect (panel_x + 4 + INR i * 80)%R 70 80 28)
          (nth i ["CW"; "180"; "CCW"] "") (panel_command + i)
          (negb busy) (Nat.eqb turn i).
 
 (** One face button, issuing that face with the armed amount. *)
 Definition face_button (i : nat) (busy : bool) (turn : nat) : button :=
-  Button (Rect (panel_x + INR (Nat.modulo i 3) * 92)%R
-               (194 + INR (Nat.div i 3) * 47)%R 84 37)
+  Button (Rect (panel_x + INR (Nat.modulo i 3) * 85)%R
+               (114 + INR (Nat.div i 3) * 40)%R 78 32)
          (face_text i) (1 + 3 * i + turn) (negb busy) false.
 
 (** Every control in the side panel, in drawing and hit-testing order. *)
-Definition buttons (busy playing has_plan : bool) (turn depth : nat)
+Definition buttons (busy playing has_plan : bool) (turn : nat)
   : list button :=
   map (fun i => amount_button i busy turn) [0; 1; 2] ++
   map (fun i => face_button i busy turn) [0; 1; 2; 3; 4; 5] ++
-  [Button (Rect 884 295 130 36) "Undo" 24 (negb busy) false;
-   Button (Rect 1026 295 126 36) "Reset cube" 20 true false;
-   Button (Rect 884 343 268 40) "Scramble / 3 turns" 19 (negb busy) false;
-   Button (Rect 1058 418 42 30) "-" 25
-     (andb (negb busy) (negb (Nat.eqb depth 0))) false;
-   Button (Rect 1110 418 42 30) "+" 26
-     (andb (negb busy) (Nat.ltb depth max_depth)) false;
-   Button (Rect 884 464 268 42)
+  [Button (Rect 916 196 120 32) "Undo" 24 (negb busy) false;
+   Button (Rect 1044 196 120 32) "Reset cube" 20 true false;
+   Button (Rect 916 238 248 34) "Scramble / 20 turns" 19 (negb busy) false;
+   Button (Rect 916 282 248 38)
      (if busy then "Cancel search" else "Find shortest")
      (if busy then 27 else 21) true false;
-   Button (Rect 884 598 130 36) "Step" 22 (andb (negb busy) has_plan) false;
-   Button (Rect 1026 598 126 36) (if playing then "Pause" else "Play") 23
+   Button (Rect 916 482 120 32) "Step" 22 (andb (negb busy) has_plan) false;
+   Button (Rect 1044 482 120 32) (if playing then "Pause" else "Play") 23
      (andb (negb busy) has_plan) false].
 
 (** The first live control under the cursor, if any. *)
@@ -424,9 +423,19 @@ Record app : Type := Mk {
   a_script : script
 }.
 
-(** Constants for one run: the off-screen target and the self-test's output. *)
+(** Resources for one run: the target, fonts, and optional self-test output. *)
 Record config : Type :=
-  Config { c_target : rl_texture; c_shot : option PrimString.string }.
+  Config {
+    c_target : rl_texture;
+    c_regular : rl_font;
+    c_semibold : rl_font;
+    c_shot : option PrimString.string
+  }.
+
+(** Use regular text for guidance and semibold for titles, controls, and moves. *)
+Definition label (cfg : config) (strong : bool) (s : PrimString.string)
+    (x y : R) (size : nat) (color : rl_color) : itree appE unit :=
+  rl_text (if strong then c_semibold cfg else c_regular cfg) s x y size 0.3 color.
 
 (** * Drawing *)
 
@@ -485,48 +494,48 @@ Definition draw_scene (cfg : config) (o : orbit) (s : shown) (now : R)
   rl_draw_target (c_target cfg) (rx canvas) (ry canvas).
 
 (** Draw one control, centring its label and dimming it when it is not live. *)
-Definition draw_button (mx my : R) (b : button) : itree appE unit :=
+Definition draw_button (cfg : config) (mx my : R) (b : button) : itree appE unit :=
   let over := andb (b_live b) (in_rect mx my (b_box b)) in
+  let segment := Nat.leb panel_command (b_cmd b) in
   let fill := if b_sel b then accent else if over then hovered else raised in
-  let label := if b_sel b then background else if b_live b then ink else muted in
-  rl_rectangle (b_box b) 0.22 (if b_live b then fill else fade fill 35 100) ;;
-  w <- rl_text_width (b_text b) 17 ;;
-  rl_text (b_text b)
+  let text_color := if b_sel b then background else if b_live b then ink else muted in
+  (if andb segment (negb (orb (b_sel b) over)) then Ret tt
+   else rl_rectangle (b_box b) 0.22
+          (if b_live b then fill else fade fill 35 100)) ;;
+  w <- rl_text_width (c_semibold cfg) (b_text b) 17 0.3 ;;
+  label cfg true (b_text b)
           (rx (b_box b) + (rw (b_box b) - INR w) / 2)%R
           (ry (b_box b) + (rh (b_box b) - 17) / 2)%R 17
-          (if b_live b then label else fade label 40 100).
+          (if b_live b then text_color else fade text_color 40 100).
 
-(** Draw the whole frame: the scene, the header, the panel, and the hints. *)
+(** Draw the whole frame: the cube, compact control panel, and input hints. *)
 Definition draw (cfg : config) (a : app) (now : R) : itree appE unit :=
   let v := a_view a in
   let pending := map move_code (solution v) in
   let st := phase_code (status v) in
   let busy := searching v in
-  let settled := andb (state_eq (cube v) init_state)
-                      (match s_anim (a_shown a) with None => true | _ => false end) in
   p <- rl_mouse ;;
   let '(mx, my) := p in
   rl_begin_drawing ;;
   rl_clear background ;;
   draw_scene cfg (u_orbit (a_ui a)) (a_shown a) now ;;
-  rl_text "RUBIK" 36 28 38 ink ;;
-  rl_text "A different perspective on the shortest path." 185 43 18 muted ;;
-  rl_rectangle (Rect 1018 31 146 32) 0.5
-               (if settled then fade accent 15 100 else raised) ;;
-  rl_text (if settled then "SOLVED" else "EXPLORING") 1037 40 16
-          (if settled then accent else muted) ;;
   rl_rectangle panel_box 0.06 panel_fill ;;
-  rl_text "FACE TURNS" panel_x 119 18 ink ;;
-  rl_text "SEARCH DEPTH" panel_x 400 15 muted ;;
-  rl_text (PrimString.cat (nat_text (depth v)) " moves") panel_x 426 20 ink ;;
+  label cfg true "FACE TURNS" panel_x 40 16 ink ;;
+  rl_rectangle amount_track 0.3 background ;;
   for_each (buttons busy (playing v) (negb (Nat.eqb (length pending) 0))
-                    (u_turn (a_ui a)) (depth v))
-           (draw_button mx my) ;;
-  rl_text (status_text st (depth v) pending) panel_x 523 14
+                    (u_turn (a_ui a)))
+           (draw_button cfg mx my) ;;
+  label cfg false (status_text st pending) panel_x 336 16
           (if orb (Nat.eqb st 4) (Nat.eqb st 6) then sticker_color 4 else muted) ;;
-  rl_text (moves_text pending) panel_x 555 23 accent ;;
-  rl_text "Drag to orbit  /  Scroll to zoom  /  Home to recenter" 36 757 17 muted ;;
-  rl_text "U R F D L B  /  Shift: inverse  /  Alt: half" 36 778 13
+  for_each [0; 1; 2; 3]
+    (fun row =>
+      let line := firstn 5 (skipn (5 * row) pending) in
+      if andb (Nat.eqb (length line) 0) (negb (Nat.eqb row 0)) then Ret tt
+      else label cfg true (moves_text line) panel_x (366 + 26 * INR row)%R 23 accent) ;;
+  label cfg false "Home: white down, blue front" panel_x 534 14 muted ;;
+  label cfg false "Red right. Drag orbits the view." panel_x 554 14 muted ;;
+  label cfg false "Drag to orbit  /  Scroll to zoom  /  Home to recenter" 36 757 17 muted ;;
+  label cfg false "U R F D L B  /  Shift: inverse  /  Alt: half" 36 778 13
           (fade muted 70 100) ;;
   rl_end_drawing.
 
@@ -551,8 +560,7 @@ Definition face_key_commands (amount : nat) : list (rl_key * nat) :=
 (** The keys that drive the panel rather than the cube. *)
 Definition panel_key_commands (busy : bool) : list (rl_key * nat) :=
   [(KeyS, 19); (KeyX, 20); (KeyEnter, if busy then 27 else 21);
-   (KeySpace, 22); (KeyP, 23); (KeyBackspace, 24);
-   (KeyLeftBracket, 25); (KeyRightBracket, 26)].
+   (KeySpace, 22); (KeyP, 23); (KeyBackspace, 24)].
 
 (** Fold this frame's mouse motion into the camera. *)
 Definition read_orbit (u : ui) : itree appE ui :=
@@ -580,7 +588,7 @@ Definition read_command (a : app) (u : ui) (now : R) : itree appE (nat * ui) :=
   p <- rl_mouse ;;
   let '(mx, my) := p in
   click <- clicked ButtonLeft ;;
-  let armed := hit (buttons busy (playing v) pending (u_turn u) (depth v)) mx my in
+  let armed := hit (buttons busy (playing v) pending (u_turn u)) mx my in
   match (if click : bool then armed else None) with
   | Some b =>
       if Nat.leb panel_command (b_cmd b)
@@ -653,7 +661,7 @@ Definition script_command (cfg : config) (a : app) (now : R)
     Every command that can change the cube goes through [Viewer.v], so the
     certified move functions are the only way a sticker ever moves. *)
 
-(** Short random scrambles keep the demo within the default search allowance. *)
+(** Twenty random turns provide a full scramble for the viewer. *)
 Fixpoint scramble (n : nat) (v : view) : itree appE view :=
   match n with
   | 0 => Ret v
@@ -662,7 +670,7 @@ Fixpoint scramble (n : nat) (v : view) : itree appE view :=
 
 (** Replace transient status while leaving the cube and undo history intact. *)
 Definition with_status (n : phase) (v : view) : view :=
-  View (cube v) (history v) [] (depth v) false n.
+  View (cube v) (history v) [] false n.
 
 (** Abandon a search, if one is running. *)
 Definition drop (j : option search) : itree appE unit :=
@@ -678,17 +686,14 @@ Definition command (key : nat) (v : view) (j : option search)
     Ret (turn_view (code_move (key - 1)) v, j)
   else
     match key with
-    | 19 => scrambled <- scramble 3 (initial_view tt) ;; Ret (scrambled, j)
+    | 19 => scrambled <- scramble 20 (initial_view tt) ;; Ret (scrambled, j)
     | 21 => drop j ;;
-            h <- job_start solve_request (depth v, colors_of (cube v)) ;;
+            h <- job_start solve_request (colors_of (cube v)) ;;
             Ret (with_status Searching v, Some h)
     | 22 => Ret (step_view v, j)
-    | 23 => Ret (View (cube v) (history v) (solution v) (depth v)
+    | 23 => Ret (View (cube v) (history v) (solution v)
                       (negb (playing v)) (status v), j)
     | 24 => Ret (undo_view v, j)
-    | 25 => Ret (View (cube v) (history v) [] (depth v - 1) false Ready, j)
-    | 26 => Ret (View (cube v) (history v) []
-                      (Nat.min max_depth (S (depth v))) false Ready, j)
     | 29 => Ret ((if playing v then step_view v else v), j)
     | _ => Ret (v, j)
     end.
@@ -701,7 +706,7 @@ Definition receive (v : view) (j : option search) : itree appE view :=
         reply <- job_poll h ;;
         match reply with
         | None => Ret v
-        | Some None => Ret (with_status DepthExceeded v)
+        | Some None => Ret (with_status NoSolution v)
         | Some (Some moves) => Ret (accept_solution moves v)
         end
       else Ret v
@@ -728,10 +733,12 @@ Definition step_input (cfg : config) (a : app) (now : R)
       let '(key, u') := r in Ret (key, u', a_script a)
   end.
 
-(** Shut the viewer down in the order its resources were acquired. A search
+(** Shut the viewer down in reverse order of resource acquisition. A search
     still running is abandoned, not waited for. *)
 Definition shutdown (cfg : config) (j : option search) : itree appE unit :=
-  drop j ;; rl_unload_target (c_target cfg) ;; rl_close_window.
+  drop j ;; rl_unload_target (c_target cfg) ;;
+  rl_unload_font (c_semibold cfg) ;; rl_unload_font (c_regular cfg) ;;
+  rl_close_window.
 
 (** Each guarded frame reads input, advances the cube, then presents the view. *)
 CoFixpoint frames (cfg : config) (a : app) : itree appE bool :=
@@ -760,5 +767,7 @@ Definition program (smoke : bool) (path : PrimString.string) : itree appE bool :
   let shot := if smoke then Some path else None in
   rl_init_window "Rubik - shortest cube solutions" window_w window_h ;;
   rl_set_target_fps 60 ;;
+  regular <- rl_load_font "assets/fonts/IBMPlexSans-Regular.ttf" 64 ;;
+  semibold <- rl_load_font "assets/fonts/IBMPlexSans-SemiBold.ttf" 64 ;;
   target <- rl_load_target canvas_w canvas_h ;;
-  frames (Config target shot) (initial_app shot).
+  frames (Config target regular semibold shot) (initial_app shot).

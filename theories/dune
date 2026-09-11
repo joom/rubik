@@ -1,5 +1,5 @@
 (coq.theory
- (name minirubik)
+ (name Rubik)
  (package rocq-rubik)
  (synopsis "A certified shortest-path solver for the Rubik 3x3x3 cube")
- (theories Stdlib))
+ (theories Stdlib ExtLib GameTrees))

@@ -5,7 +5,7 @@ DUNE ?= dune
 ROCQCHK ?= rocqchk
 BUILD := _build/default
 GENERATED := native/generated
-MODULES := BasicRubik Geometry Solver Viewer Example
+MODULES := BasicRubik Geometry Heuristic GameTree Solver Viewer Example
 
 .DEFAULT_GOAL := all
 .PHONY: all extract check check-generated tests html install clean
@@ -28,14 +28,15 @@ check-generated:
 
 # Recheck the compiled proofs with the kernel, independently of the build.
 check: all check-generated
-	$(ROCQCHK) -silent -R $(BUILD)/theories minirubik \
-	  $(addprefix minirubik.,$(MODULES))
+	$(ROCQCHK) -silent -R $(BUILD)/game-trees/theories GameTrees \
+	  -R $(BUILD)/theories Rubik \
+	  $(addprefix Rubik.,$(MODULES))
 
 tests: check
 
 html:
 	$(DUNE) build @theories/doc
-	@echo "Browse $(BUILD)/theories/minirubik.html/index.html"
+	@echo "Browse $(BUILD)/theories/Rubik.html/index.html"
 
 install:
 	$(DUNE) build -p rocq-rubik @install

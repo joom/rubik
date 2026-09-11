@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(rubik LANGUAGES C CXX)
+project(Rubik LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -42,3 +42,15 @@ target_link_libraries(rubik PRIVATE rubik_core Threads::Threads)
 target_compile_options(rubik PRIVATE
   $<$<CXX_COMPILER_ID:Clang,AppleClang>:-fbracket-depth=1024>
   $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall;-Wextra;-Wpedantic>)
+
+# Keep the licensed fonts next to the executable so launch does not depend on cwd.
+set(rubik_font_files
+  "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/IBMPlexSans-Regular.ttf"
+  "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/IBMPlexSans-SemiBold.ttf"
+  "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/OFL.txt")
+set_property(TARGET rubik APPEND PROPERTY LINK_DEPENDS "${rubik_font_files}")
+add_custom_command(TARGET rubik POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:rubik>/assets/fonts"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${rubik_font_files}
+          "$<TARGET_FILE_DIR:rubik>/assets/fonts"
+  VERBATIM)

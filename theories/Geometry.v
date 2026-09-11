@@ -1,5 +1,5 @@
 From Stdlib Require Import List ZArith.
-From minirubik Require Export BasicRubik.
+From Rubik Require Export BasicRubik.
 
 (** * Addressing stickers *)
 

@@ -1,3 +1,7 @@
 [submodule "crane"]
 	path = crane
 	url = https://github.com/bloomberg/crane.git
+[submodule "game-trees"]
+	path = game-trees
+	url = https://github.com/bloomberg/game-trees
+	branch = pruning

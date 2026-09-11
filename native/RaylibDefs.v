@@ -16,6 +16,9 @@ Import ListNotations.
 (** An opaque off-screen render target owned by the graphics library. *)
 Axiom rl_texture : Type.
 
+(** An opaque font atlas, acquired and released while the window is open. *)
+Axiom rl_font : Type.
+
 (** * Geometry and color *)
 
 (** A point or a direction in raylib's right-handed world space. *)
@@ -167,9 +170,11 @@ Inductive raylibE : Type -> Type :=
 | GetMouseWheel : raylibE R
 (** Two-dimensional drawing. *)
 | DrawRectangle : R -> R -> R -> R -> R -> nat -> nat -> nat -> nat -> raylibE unit
-| DrawText : PrimString.string -> R -> R -> nat -> nat -> nat -> nat -> nat ->
+| LoadFont : PrimString.string -> nat -> raylibE rl_font
+| UnloadFont : rl_font -> raylibE unit
+| DrawText : rl_font -> PrimString.string -> R -> R -> nat -> R -> nat -> nat -> nat -> nat ->
     raylibE unit
-| MeasureText : PrimString.string -> nat -> raylibE nat
+| MeasureText : rl_font -> PrimString.string -> nat -> R -> raylibE nat
 (** Three-dimensional drawing. *)
 | BeginMode3D : R -> R -> R -> R -> R -> R -> R -> R -> R -> R -> raylibE unit
 | EndMode3D : raylibE unit
@@ -264,15 +269,25 @@ Definition rl_rectangle_rgba {E} `{raylibE -< E}
     (x y w h roundness : R) (r g b a : nat) : itree E unit :=
   embed (DrawRectangle x y w h roundness r g b a).
 
+(** Load a font relative to the executable, rasterized at the requested size. *)
+Definition rl_load_font {E} `{raylibE -< E}
+    (path : PrimString.string) (size : nat) : itree E rl_font :=
+  embed (LoadFont path size).
+
+(** Release a font atlas before closing the window. *)
+Definition rl_unload_font {E} `{raylibE -< E} (font : rl_font) : itree E unit :=
+  embed (UnloadFont font).
+
 (** Draw a line of text with its top-left corner at the given point. *)
 Definition rl_text_rgba {E} `{raylibE -< E}
-    (s : PrimString.string) (x y : R) (size r g b a : nat) : itree E unit :=
-  embed (DrawText s x y size r g b a).
+    (font : rl_font) (s : PrimString.string) (x y : R)
+    (size : nat) (spacing : R) (r g b a : nat) : itree E unit :=
+  embed (DrawText font s x y size spacing r g b a).
 
 (** The width the given text would occupy at the given size. *)
 Definition rl_text_width {E} `{raylibE -< E}
-    (s : PrimString.string) (size : nat) : itree E nat :=
-  embed (MeasureText s size).
+    (font : rl_font) (s : PrimString.string) (size : nat) (spacing : R) : itree E nat :=
+  embed (MeasureText font s size spacing).
 
 (** Enter three-dimensional drawing through a camera given componentwise. *)
 Definition rl_begin_3d_at {E} `{raylibE -< E}
@@ -342,8 +357,9 @@ Definition rl_rectangle {E} `{raylibE -< E}
 
 (** Draw a line of text. *)
 Definition rl_text {E} `{raylibE -< E}
-    (s : PrimString.string) (x y : R) (size : nat) (c : rl_color) : itree E unit :=
-  rl_text_rgba s x y size (cr c) (cg c) (cb c) (ca c).
+    (font : rl_font) (s : PrimString.string) (x y : R) (size : nat)
+    (spacing : R) (c : rl_color) : itree E unit :=
+  rl_text_rgba font s x y size spacing (cr c) (cg c) (cb c) (ca c).
 
 (** Enter three-dimensional drawing through the given camera. *)
 Definition rl_begin_3d {E} `{raylibE -< E} (c : rl_camera) : itree E unit :=

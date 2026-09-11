@@ -24,7 +24,9 @@ depends: [
   "dune" {>= "3.21"}
   "rocq-core" {>= "9.0"}
   "rocq-stdlib" {>= "9.0"}
+  "coq-ext-lib"
+  "rocq-game-trees"
   "conf-python-3" {with-test}
 ]
-tags: ["keyword:rubik" "logpath:minirubik"]
+tags: ["keyword:rubik" "logpath:Rubik"]
 authors: ["Laurent Théry" "Joomy Korkut"]

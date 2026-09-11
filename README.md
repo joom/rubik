@@ -1,9 +1,15 @@
-# Certified 3×3×3 Rubik’s cube solver
+# Rubik
+
+A certified 3×3×3 Rubik’s cube solver.
 
 This repository models all 54 stickers of a 3×3×3 cube and proves that its
 solver returns a shortest solution for every state reachable by legal moves.
-It builds with **Rocq 9.0.0** and the standard library; BigNums is no longer
-required.
+It builds with **Rocq 9.0.0**, the standard library, ExtLib, and the vendored
+`game-trees` library. Initialize the submodules before building:
+
+```sh
+git submodule update --init --recursive
+```
 
 ```sh
 opam exec -- make
@@ -14,7 +20,7 @@ The build is driven by **dune**: the `Makefile` is a thin set of entry points
 over `dune build`. `make` builds the proofs in [theories/](theories), and
 `make check` also checks the generated move tables and rechecks the compiled
 proofs with `rocqchk`, independently of the build. Python 3 is needed only for
-the table check and regeneration. `make install` installs the `minirubik`
+the table check and regeneration. `make install` installs the `Rubik`
 namespace.
 
 ## Model and moves
@@ -52,7 +58,7 @@ the solved center colors fix the reference frame.
 
 ```coq
 From Stdlib Require Import List.
-From minirubik Require Import Solver.
+From Rubik Require Import Solver.
 Import ListNotations.
 
 Definition scrambled := run init_state [(Right, CW); (Up, CW)].
@@ -72,8 +78,23 @@ result is globally shortest. It searches up to a proved finite-state bound,
 so `None` means that the cube is invalid. No scramble history or validity
 proof is an input to the computation.
 
+[GameTree.v](theories/GameTree.v) unfolds each cube into a coinductive
+`cotree` from the `game-trees` library, as in `reversirocq`. Nodes carry the
+cube and the preceding move. The successor function prunes consecutive turns
+of the same face and keeps only descending face order for adjacent opposite
+faces. Same-face turns merge or cancel, and opposite faces commute; the
+normalisation proof shows every solution has a retained path no longer than
+itself. [Heuristic.v](theories/Heuristic.v) supplies an additional admissible
+bound: one face turn repairs at most four misplaced edge stickers and eight
+misplaced corner stickers. A subtree is skipped when either count is too large
+for the remaining moves. This bound is proved for all states and all 18 moves.
+Depth-limited search forces children one at a time, and iterative
+deepening finds a globally shortest path. A proved equivalent ordinary
+recursion supports the proofs; the executable solver walks the tree.
+
 **This is an exhaustive reference solver, not a fast solver for arbitrary
-scrambles.** The branching factor is 18 and the general termination bound is
+scrambles.** There are 18 root branches and at most 15 thereafter (12 after
+Up, Right, or Front). The general termination bound is
 `6^54`, the size of the unrestricted sticker space. That bound is deliberately
 loose; it does not claim the cube’s actual diameter. Deep scrambles and
 exhaustive invalidity checks are computationally impractical.
@@ -134,6 +155,23 @@ state, `solve_request_correct` proves that a reply from the job decodes to a
 globally shortest solution, and `accepted_solution_solves` proves that a wrong
 or stale reply can never be installed as a plan.
 
+### Typography
+
+The viewer bundles IBM Plex Sans in regular and semibold weights, under the
+[SIL Open Font License](assets/fonts/OFL.txt). Fonts are rendered from a
+high-resolution atlas with filtered scaling; measurements use the same font
+and spacing as drawing. CMake copies them to `assets/fonts/` alongside the
+executable, so launching from another working directory works too. Keep that
+folder with the binary when moving it.
+
+### Face notation and orientation
+
+The home view uses **white down, blue front, red right** (yellow up,
+green back, orange left). `U R F D L B` name positions in that fixed frame;
+unprimed moves turn clockwise when looking straight at the selected face.
+Dragging orbits the camera without relabelling the cube. Press `Home` to
+return to the reference view before following a solution on a physical cube.
+
 ### Animation
 
 Every turn is animated. The application hands the frame its own undo history,
@@ -149,7 +187,7 @@ Crane is a submodule, so clone with it:
 
 ```sh
 git clone --recurse-submodules https://github.com/joom/rubik.git
-git submodule update --init crane     # if you already cloned without it
+git submodule update --init --recursive # if you already cloned without them
 ```
 
 You need Rocq with `dune`, a C++23 compiler, and CMake 3.24. raylib is fetched
@@ -177,19 +215,23 @@ ended solved and exported the screenshot.
 - drag with the mouse to orbit, scroll to zoom, `Home` to recenter
 - `U R F D L B` turn a face, with `Shift` for an inverse turn and `Alt` for a
   half turn; the side panel does the same with buttons
-- `S` scrambles three turns, `X` resets, `Backspace` undoes one turn
-- `[` and `]` change the search allowance
+- `S` scrambles twenty turns, `X` resets, `Backspace` undoes one turn
 - `Enter` starts or cancels the search, `Space` steps one move, `P` plays back
 
-### About the search allowance
+### Finding a solution
 
-The allowance goes up to twenty moves, which is an allowance and not a promise.
-The branching factor is eighteen, so only the first handful of depths return in
-interactive time; asking for more than about seven will not finish while you
-wait. The search runs as a background job over a copied snapshot, so the view
-keeps orbiting regardless, and a cancelled job's result is discarded before it
-can reach the screen. Cancelling and quitting both abandon a running search
-rather than waiting for it, so neither one blocks.
+“Find shortest” (or `Enter`) automatically searches through twenty moves;
+there is no depth setting. Twenty is [God’s number](https://www.cube20.org/)
+for valid 3×3×3 cubes in the face-turn metric used here. The diameter result
+is external; our Rocq proofs establish bounded search completeness and
+shortestness without assuming it.
+
+The tree prunes redundant move orders and branches whose sticker lower bound
+exceeds the remaining depth. This reduces search, but does not make arbitrary
+twenty-move optimal searches interactive. The worker uses a copied snapshot,
+so the view keeps orbiting while it searches. `Enter` cancels a running search;
+its result is discarded before it can reach the screen. Cancelling and quitting
+abandon the worker rather than waiting for it.
 
 ## Proof guarantees
 
@@ -201,6 +243,9 @@ unchecked computation casts.
 | `quarter_geometry` | Every sticker follows a clockwise 3D outer-layer rotation. |
 | `quarter_four`, `moves_inv` | Four quarter turns are identity; every move has an inverse. |
 | `valid_centers` | Legal sequences preserve the solved centers. |
+| `walk_plain` | Lazy tree traversal agrees with the ordinary recursion used in proofs. |
+| `feasible_solution` | The sticker lower bound never prunes a solution within the remaining depth. |
+| `canonical_exists` | Pruning preserves a solution no longer than any original solution. |
 | `solve_sound` | Every returned sequence reaches `init_state`. |
 | `solve_complete` | Every valid state receives a solution. |
 | `solve_minimal`, `solve_init` | No solving sequence is shorter than the returned sequence. |

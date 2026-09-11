@@ -1,5 +1,5 @@
 From Stdlib Require Import Arith Lia List.
-From minirubik Require Import BasicRubik Geometry Solver.
+From Rubik Require Import BasicRubik Geometry Solver.
 Import ListNotations.
 
 (** * A value-only boundary for the native viewer *)
@@ -75,45 +75,43 @@ Proof.
   rewrite move_code_roundtrip, IH; reflexivity.
 Qed.
 
-(** Twenty moves bound native searches without extracting the enormous total
-    bound. The bound is an allowance, not a promise: the branching factor is 18,
-    so only the first handful of depths complete in interactive time. *)
+(** God's number in the face-turn metric bounds solutions of valid cubes by
+    twenty moves. This external diameter result is not assumed by our proofs. *)
 Definition max_depth : nat := 20.
 
-(** The worker calls the existing certified solver on a value-only snapshot. *)
-Definition solve_snapshot (limit : nat) (xs : list nat) : option (list nat) :=
-  option_map (map move_code) (solve_bounded (Nat.min limit max_depth) (from_colors xs)).
+(** The worker searches automatically through twenty moves on its snapshot. *)
+Definition solve_snapshot (xs : list nat) : option (list nat) :=
+  option_map (map move_code) (solve_bounded max_depth (from_colors xs)).
 
 (** Every worker result decodes to a globally shortest solution of its snapshot. *)
-Theorem solve_snapshot_correct limit s p :
-  solve_snapshot limit (colors_of s) = Some p -> shortest s (map code_move p).
+Theorem solve_snapshot_correct s p :
+  solve_snapshot (colors_of s) = Some p -> shortest s (map code_move p).
 Proof.
   unfold solve_snapshot; rewrite colors_roundtrip.
-  destruct (solve_bounded (Nat.min limit max_depth) s) as [q|] eqn:E;
+  destruct (solve_bounded max_depth s) as [q|] eqn:E;
     simpl; try discriminate.
   intro H; inversion H; subst p; rewrite path_code_roundtrip.
   exact (proj1 (solve_bounded_spec _ _ _ E)).
 Qed.
 
-(** A background job takes one value, so the worker's entry point is uncurried. *)
-Definition solve_request (r : nat * list nat) : option (list nat) :=
-  solve_snapshot (fst r) (snd r).
+(** The background job receives only the cube snapshot. *)
+Definition solve_request : list nat -> option (list nat) := solve_snapshot.
 
-(** The uncurried entry point carries the same guarantee as the solver itself. *)
-Theorem solve_request_correct limit s p :
-  solve_request (limit, colors_of s) = Some p -> shortest s (map code_move p).
+(** The job entry point carries the same guarantee as the solver itself. *)
+Theorem solve_request_correct s p :
+  solve_request (colors_of s) = Some p -> shortest s (map code_move p).
 Proof. apply solve_snapshot_correct. Qed.
 
 (** * Pure interaction state *)
 
 (** Named phases distinguish pending work, successful plans, and bounded failure. *)
-Inductive phase := Ready | Searching | SolutionReady | Solved | DepthExceeded | InvalidReply.
+Inductive phase := Ready | Searching | SolutionReady | Solved | NoSolution | InvalidReply.
 
 (** Encode display phases at the native boundary, without exposing Rocq constructors. *)
 Definition phase_code (p : phase) : nat :=
   match p with
   | Ready => 0 | Searching => 1 | SolutionReady => 2 | Solved => 3
-  | DepthExceeded => 4 | InvalidReply => 6
+  | NoSolution => 4 | InvalidReply => 6
   end.
 
 (** The viewer owns a cube, undo history, pending solution, and playback controls. *)
@@ -121,31 +119,30 @@ Record view := View {
   cube : state; (** The current 54-sticker state. *)
   history : list move; (** Executed moves, newest first, for undo. *)
   solution : list move; (** Remaining solution moves in execution order. *)
-  depth : nat; (** The requested bounded search allowance. *)
   playing : bool; (** Whether timer events advance the solution. *)
   status : phase (** The current interaction phase. *)
 }.
 
-(** Start solved with a four-move search allowance and no pending actions. *)
-Definition initial_view (_ : unit) : view := View init_state [] [] 4 false Ready.
+(** Start solved with no pending actions. *)
+Definition initial_view (_ : unit) : view := View init_state [] [] false Ready.
 
 (** Applying a manual turn records its inverse opportunity and discards stale solutions. *)
 Definition turn_view (m : move) (v : view) : view :=
-  View (m2f m (cube v)) (m :: history v) [] (depth v) false Ready.
+  View (m2f m (cube v)) (m :: history v) [] false Ready.
 
 (** Undo removes exactly one manual or playback move from the history. *)
 Definition undo_view (v : view) : view :=
   match history v with
   | [] => v
-  | m :: rest => View (m2f (minv m) (cube v)) rest [] (depth v) false Ready
+  | m :: rest => View (m2f (minv m) (cube v)) rest [] false Ready
   end.
 
 (** Playback applies the next certified move while retaining the rest of the plan. *)
 Definition step_view (v : view) : view :=
   match solution v with
-  | [] => View (cube v) (history v) [] (depth v) false (status v)
+  | [] => View (cube v) (history v) [] false (status v)
   | m :: rest =>
-      View (m2f m (cube v)) (m :: history v) rest (depth v)
+      View (m2f m (cube v)) (m :: history v) rest
            (andb (playing v) (negb (Nat.eqb (length rest) 0)))
            (if Nat.eqb (length rest) 0 then Solved else SolutionReady)
   end.
@@ -154,8 +151,8 @@ Definition step_view (v : view) : view :=
 Definition accept_solution (p : list nat) (v : view) : view :=
   let moves := map code_move p in
   if state_eq (run (cube v) moves) init_state
-  then View (cube v) (history v) moves (depth v) false SolutionReady
-  else View (cube v) (history v) [] (depth v) false InvalidReply.
+  then View (cube v) (history v) moves false SolutionReady
+  else View (cube v) (history v) [] false InvalidReply.
 
 (** Even an erroneous external reply cannot install a non-solving move sequence. *)
 Theorem accepted_solution_solves p v :

@@ -6,7 +6,7 @@
 
 From Crane Require Import Mapping.Std Monads.ITree.
 From Crane Require Extraction.
-From minirubik Require Export native.JobDefs.
+From Rubik Require Export native.JobDefs.
 
 Crane Extract Inlined Constant job => "crane::job<%t0>"
   From "background_job.hpp".

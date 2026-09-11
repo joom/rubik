@@ -7,10 +7,17 @@
 From Crane Require Import Mapping.Std Mapping.NatIntStd Mapping.DequeList
   Mapping.ZInt Mapping.Real Monads.ITree.
 From Crane Require Extraction.
-From minirubik Require Export native.RaylibDefs.
+From Rubik Require Export native.RaylibDefs.
 
 (** The off-screen target handle is whatever the helper header calls it. *)
 Crane Extract Inlined Constant rl_texture => "rl_texture" From "raylib_helpers.h".
+
+(** Font handles and their lifetime. *)
+Crane Extract Inlined Constant rl_font => "rl_font" From "raylib_helpers.h".
+Crane Extract Inlined Constant rl_load_font =>
+  "rl_load_font(%a0, %a1)" From "raylib_helpers.h".
+Crane Extract Inlined Constant rl_unload_font =>
+  "rl_unload_font(%a0)" From "raylib_helpers.h".
 
 (** Window lifetime and geometry. *)
 Crane Extract Inlined Constant rl_init_window =>
@@ -56,10 +63,10 @@ Crane Extract Inlined Constant rl_rectangle_rgba =>
   "rl_rectangle(%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8)"
   From "raylib_helpers.h".
 Crane Extract Inlined Constant rl_text_rgba =>
-  "rl_text(%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7)"
+  "rl_text(%a0, %a1, %a2, %a3, %a4, %a5, %a6, %a7, %a8, %a9)"
   From "raylib_helpers.h".
 Crane Extract Inlined Constant rl_text_width =>
-  "rl_text_width(%a0, %a1)" From "raylib_helpers.h".
+  "rl_text_width(%a0, %a1, %a2, %a3)" From "raylib_helpers.h".
 
 (** Three-dimensional drawing. *)
 Crane Extract Inlined Constant rl_begin_3d_at =>
@@ -100,7 +107,7 @@ Crane Extract Inlined Constant rl_rectangle =>
   "rl_rectangle(%a0.rx, %a0.ry, %a0.rw, %a0.rh, %a1, %a2.cr, %a2.cg, %a2.cb, %a2.ca)"
   From "raylib_helpers.h".
 Crane Extract Inlined Constant rl_text =>
-  "rl_text(%a0, %a1, %a2, %a3, %a4.cr, %a4.cg, %a4.cb, %a4.ca)"
+  "rl_text(%a0, %a1, %a2, %a3, %a4, %a5, %a6.cr, %a6.cg, %a6.cb, %a6.ca)"
   From "raylib_helpers.h".
 Crane Extract Inlined Constant rl_begin_3d =>
   "rl_begin_3d(%a0.cam_at.v3x, %a0.cam_at.v3y, %a0.cam_at.v3z, %a0.cam_to.v3x, %a0.cam_to.v3y, %a0.cam_to.v3z, %a0.cam_up.v3x, %a0.cam_up.v3y, %a0.cam_up.v3z, %a0.cam_fovy)"

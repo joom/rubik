@@ -10,11 +10,13 @@
 #include <rlgl.h>
 
 #include <cstdint>
+#include <cmath>
 #include <string>
 #include <utility>
 
 // The opaque render-target handle Rocq sees.
 using rl_texture = RenderTexture2D;
+using rl_font = Font;
 
 namespace rl_detail {
 
@@ -120,16 +122,34 @@ inline void rl_rectangle(Real x, Real y, Real w, Real h, Real roundness,
   }
 }
 
-inline void rl_text(const std::string &s, Real x, Real y, std::uint64_t size,
+// --- fonts and text ---
+
+inline rl_font rl_load_font(const std::string &path, std::uint64_t size) {
+  const std::string full_path = std::string(GetApplicationDirectory()) + path;
+  Font font = LoadFontEx(full_path.c_str(), static_cast<int>(size), nullptr, 0);
+  if (IsFontValid(font)) SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
+  return font;
+}
+
+inline void rl_unload_font(rl_font font) {
+  // LoadFontEx falls back to raylib's default atlas when a file is missing.
+  if (IsFontValid(font) && font.texture.id != GetFontDefault().texture.id)
+    UnloadFont(font);
+}
+
+inline void rl_text(rl_font font, const std::string &s, Real x, Real y,
+                    std::uint64_t size, Real spacing,
                     std::uint64_t r, std::uint64_t g, std::uint64_t b,
                     std::uint64_t a) {
   using rl_detail::f;
-  DrawText(s.c_str(), static_cast<int>(f(x)), static_cast<int>(f(y)),
-           static_cast<int>(size), rl_detail::color(r, g, b, a));
+  DrawTextEx(font, s.c_str(), {f(x), f(y)}, static_cast<float>(size), f(spacing),
+             rl_detail::color(r, g, b, a));
 }
 
-inline std::uint64_t rl_text_width(const std::string &s, std::uint64_t size) {
-  return static_cast<std::uint64_t>(MeasureText(s.c_str(), static_cast<int>(size)));
+inline std::uint64_t rl_text_width(rl_font font, const std::string &s,
+                                   std::uint64_t size, Real spacing) {
+  return static_cast<std::uint64_t>(std::ceil(
+      MeasureTextEx(font, s.c_str(), static_cast<float>(size), rl_detail::f(spacing)).x));
 }
 
 // --- three-dimensional drawing ---

@@ -1,75 +1,27 @@
 From Stdlib Require Import Arith Lia List.
-From minirubik Require Export BasicRubik.
+From Rubik Require Export BasicRubik GameTree.
 Import ListNotations.
 
-(** * Depth-limited search *)
+(** * Depth-limited tree search *)
 
-(** Try candidates in order and return the first successful result. *)
-Fixpoint choose {A B} (f : A -> option B) (xs : list A) : option B :=
-  match xs with
-  | [] => None
-  | x :: xs =>
-      match f x with
-      | Some y => Some y
-      | None => choose f xs
-      end
-  end.
-
-(** A successful choice comes from a candidate actually present in the list. *)
-Lemma choose_some {A B} (f : A -> option B) xs y :
-  choose f xs = Some y -> exists x, In x xs /\ f x = Some y.
-Proof.
-  induction xs as [| x xs IH]; simpl; [discriminate |].
-  destruct (f x) eqn:E.
-  - intro H; inversion H; subst; exists x; auto.
-  - intro H; destruct (IH H) as [z [Hz Ez]]; exists z; auto.
-Qed.
-
-(** Choice fails exactly when every available candidate fails. *)
-Lemma choose_none {A B} (f : A -> option B) xs :
-  choose f xs = None <-> forall x, In x xs -> f x = None.
-Proof.
-  induction xs as [| x xs IH]; simpl; [tauto |].
-  destruct (f x) eqn:E; split; try discriminate.
-  - intro H; specialize (H x (or_introl eq_refl)); congruence.
-  - intros H z [<- | Hz]; auto; apply IH; auto.
-  - intro H; apply IH; intros; apply H; auto.
-Qed.
-
-(** Try all move sequences within a depth limit, stopping at the first solution. *)
-Fixpoint search (depth : nat) (s : state) : option (list move) :=
-  if state_eq_dec s init_state then Some []
-  else
-    match depth with
-    | 0 => None
-    | S n => choose (fun m => option_map (cons m) (search n (m2f m s))) Movel
-    end.
+(** Explore the lazy, pruned cube tree within the requested depth. *)
+Definition search : nat -> state -> option (list move) := tree_search.
 
 (** A successful depth-limited search solves the cube within its allowance. *)
 Lemma search_sound n s p : search n s = Some p ->
   run s p = init_state /\ length p <= n.
 Proof.
-  revert s p; induction n as [| n IH]; intros s p; cbn [search];
-    destruct (state_eq_dec s init_state) as [E | E].
-  - intro H; inversion H; subst; simpl; auto.
-  - discriminate.
-  - intro H; inversion H; subst; simpl; auto with arith.
-  - intro H; apply choose_some in H; destruct H as [m [_ H]].
-    destruct (search n (m2f m s)) as [q |] eqn:Q; simpl in H; try discriminate.
-    inversion H; subst; specialize (IH _ _ Q); simpl; intuition lia.
+  unfold search; rewrite tree_search_plain; apply plain_sound.
 Qed.
 
-(** A solution within the depth limit prevents search from failing. *)
+(** Normalisation ensures pruning preserves every solvable depth bound. *)
 Lemma search_complete n s p :
   run s p = init_state -> length p <= n -> search n s <> None.
 Proof.
-  revert s p; induction n as [| n IH]; intros s p Hp Hlen;
-    cbn [search]; destruct (state_eq_dec s init_state) as [E | E]; try discriminate.
-  - destruct p; cbn [run fold_left length] in *; [contradiction | lia].
-  - destruct p as [| m p]; cbn [run fold_left length] in *; [contradiction |].
-    intro H; rewrite choose_none in H; specialize (H m (moves_complete m)).
-    destruct (search n (m2f m s)) eqn:Q; simpl in H; try discriminate.
-    eapply IH; eauto; lia.
+  intros Hp Hlen.
+  destruct (canonical_exists s p Hp) as [q [Hc [Hq Hlq]]].
+  unfold search; rewrite tree_search_plain.
+  apply (plain_complete n None s q); auto; lia.
 Qed.
 
 (** * Shortest paths and finiteness *)

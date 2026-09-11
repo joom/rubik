@@ -1,5 +1,5 @@
 From Stdlib Require Import List.
-From minirubik Require Import Geometry Solver Viewer.
+From Rubik Require Import Geometry Heuristic Solver Viewer.
 Import ListNotations.
 
 (** * Executable solver examples *)
@@ -58,6 +58,25 @@ Proof.
   vm_compute; reflexivity.
 Qed.
 
+(** Opposite faces commute; the pruned tree keeps descending face order. *)
+Example opposite_faces :
+  solve_bounded 2 (run init_state [(Up, CW); (Down, CW)]) =
+    Some [(Down, CCW); (Up, CCW)].
+Proof. vm_compute; reflexivity. Qed.
+
+(** Consecutive turns of one face collapse to a single half turn. *)
+Example repeated_face :
+  solve_bounded 1 (run init_state [(Right, CW); (Right, CW)]) =
+    Some [(Right, Half)].
+Proof. vm_compute; reflexivity. Qed.
+
+(** Both pruning rules reject redundant branches directly. *)
+Example pruned_branches :
+  allowed (Some (Right, CW)) (Right, CCW) = false /\
+  allowed (Some (Up, CW)) (Down, Half) = false /\
+  allowed (Some (Down, Half)) (Up, CW) = true.
+Proof. repeat split; reflexivity. Qed.
+
 (** * Sticker movement *)
 
 (** A front clockwise turn carries the upper front edge onto the right face. *)
@@ -101,3 +120,19 @@ Print Assumptions solve_bounded_spec.
 Print Assumptions colors_roundtrip.
 Print Assumptions solve_request_correct.
 Print Assumptions accepted_solution_solves.
+
+Print Assumptions walk_plain.
+Print Assumptions canonical_exists.
+
+(** The edge bound rejects this branch before generating its children. *)
+Example heuristic_rejects :
+  feasible 1 (run init_state [(Right, CW); (Up, CW)]) = false.
+Proof. vm_compute; reflexivity. Qed.
+
+(** The snapshot-only worker finds a solution without a user depth parameter. *)
+Example automatic_search :
+  solve_request (colors_of (run init_state [(Right, CW); (Up, CW)])) =
+    Some [move_code (Up, CCW); move_code (Right, CCW)].
+Proof. vm_compute; reflexivity. Qed.
+
+Print Assumptions feasible_solution.
