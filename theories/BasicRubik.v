@@ -192,6 +192,145 @@ Definition quarter (f : face) (s : state) : state :=
          (Triple (Triple b6 b3 b0) (Triple b7 b4 b1) (Triple b8 b5 b2)))
     end
   end.
+
+(** A half turn, tabulated directly rather than as two clockwise turns. *)
+Definition half (f : face) (s : state) : state :=
+  match s with
+  | (Triple
+       (Triple (Triple u0 u1 u2) (Triple u3 u4 u5) (Triple u6 u7 u8))
+       (Triple (Triple r0 r1 r2) (Triple r3 r4 r5) (Triple r6 r7 r8))
+       (Triple (Triple f0 f1 f2) (Triple f3 f4 f5) (Triple f6 f7 f8)),
+     Triple
+       (Triple (Triple d0 d1 d2) (Triple d3 d4 d5) (Triple d6 d7 d8))
+       (Triple (Triple l0 l1 l2) (Triple l3 l4 l5) (Triple l6 l7 l8))
+       (Triple (Triple b0 b1 b2) (Triple b3 b4 b5) (Triple b6 b7 b8))) =>
+    match f with
+    | Up =>
+      (Triple
+         (Triple (Triple u8 u7 u6) (Triple u5 u4 u3) (Triple u2 u1 u0))
+         (Triple (Triple l0 l1 l2) (Triple r3 r4 r5) (Triple r6 r7 r8))
+         (Triple (Triple b0 b1 b2) (Triple f3 f4 f5) (Triple f6 f7 f8)),
+       Triple
+         (Triple (Triple d0 d1 d2) (Triple d3 d4 d5) (Triple d6 d7 d8))
+         (Triple (Triple r0 r1 r2) (Triple l3 l4 l5) (Triple l6 l7 l8))
+         (Triple (Triple f0 f1 f2) (Triple b3 b4 b5) (Triple b6 b7 b8)))
+    | Right =>
+      (Triple
+         (Triple (Triple u0 u1 d2) (Triple u3 u4 d5) (Triple u6 u7 d8))
+         (Triple (Triple r8 r7 r6) (Triple r5 r4 r3) (Triple r2 r1 r0))
+         (Triple (Triple f0 f1 b6) (Triple f3 f4 b3) (Triple f6 f7 b0)),
+       Triple
+         (Triple (Triple d0 d1 u2) (Triple d3 d4 u5) (Triple d6 d7 u8))
+         (Triple (Triple l0 l1 l2) (Triple l3 l4 l5) (Triple l6 l7 l8))
+         (Triple (Triple f8 b1 b2) (Triple f5 b4 b5) (Triple f2 b7 b8)))
+    | Front =>
+      (Triple
+         (Triple (Triple u0 u1 u2) (Triple u3 u4 u5) (Triple d2 d1 d0))
+         (Triple (Triple l8 r1 r2) (Triple l5 r4 r5) (Triple l2 r7 r8))
+         (Triple (Triple f8 f7 f6) (Triple f5 f4 f3) (Triple f2 f1 f0)),
+       Triple
+         (Triple (Triple u8 u7 u6) (Triple d3 d4 d5) (Triple d6 d7 d8))
+         (Triple (Triple l0 l1 r6) (Triple l3 l4 r3) (Triple l6 l7 r0))
+         (Triple (Triple b0 b1 b2) (Triple b3 b4 b5) (Triple b6 b7 b8)))
+    | Down =>
+      (Triple
+         (Triple (Triple u0 u1 u2) (Triple u3 u4 u5) (Triple u6 u7 u8))
+         (Triple (Triple r0 r1 r2) (Triple r3 r4 r5) (Triple l6 l7 l8))
+         (Triple (Triple f0 f1 f2) (Triple f3 f4 f5) (Triple b6 b7 b8)),
+       Triple
+         (Triple (Triple d8 d7 d6) (Triple d5 d4 d3) (Triple d2 d1 d0))
+         (Triple (Triple l0 l1 l2) (Triple l3 l4 l5) (Triple r6 r7 r8))
+         (Triple (Triple b0 b1 b2) (Triple b3 b4 b5) (Triple f6 f7 f8)))
+    | Left =>
+      (Triple
+         (Triple (Triple d0 u1 u2) (Triple d3 u4 u5) (Triple d6 u7 u8))
+         (Triple (Triple r0 r1 r2) (Triple r3 r4 r5) (Triple r6 r7 r8))
+         (Triple (Triple b8 f1 f2) (Triple b5 f4 f5) (Triple b2 f7 f8)),
+       Triple
+         (Triple (Triple u0 d1 d2) (Triple u3 d4 d5) (Triple u6 d7 d8))
+         (Triple (Triple l8 l7 l6) (Triple l5 l4 l3) (Triple l2 l1 l0))
+         (Triple (Triple b0 b1 f6) (Triple b3 b4 f3) (Triple b6 b7 f0)))
+    | Back =>
+      (Triple
+         (Triple (Triple d8 d7 d6) (Triple u3 u4 u5) (Triple u6 u7 u8))
+         (Triple (Triple r0 r1 l6) (Triple r3 r4 l3) (Triple r6 r7 l0))
+         (Triple (Triple f0 f1 f2) (Triple f3 f4 f5) (Triple f6 f7 f8)),
+       Triple
+         (Triple (Triple d0 d1 d2) (Triple d3 d4 d5) (Triple u2 u1 u0))
+         (Triple (Triple r8 l1 l2) (Triple r5 l4 l5) (Triple r2 l7 l8))
+         (Triple (Triple b8 b7 b6) (Triple b5 b4 b3) (Triple b2 b1 b0)))
+    end
+  end.
+
+(** A counterclockwise turn, tabulated directly rather than as three clockwise
+    turns. *)
+Definition quarter_inv (f : face) (s : state) : state :=
+  match s with
+  | (Triple
+       (Triple (Triple u0 u1 u2) (Triple u3 u4 u5) (Triple u6 u7 u8))
+       (Triple (Triple r0 r1 r2) (Triple r3 r4 r5) (Triple r6 r7 r8))
+       (Triple (Triple f0 f1 f2) (Triple f3 f4 f5) (Triple f6 f7 f8)),
+     Triple
+       (Triple (Triple d0 d1 d2) (Triple d3 d4 d5) (Triple d6 d7 d8))
+       (Triple (Triple l0 l1 l2) (Triple l3 l4 l5) (Triple l6 l7 l8))
+       (Triple (Triple b0 b1 b2) (Triple b3 b4 b5) (Triple b6 b7 b8))) =>
+    match f with
+    | Up =>
+      (Triple
+         (Triple (Triple u2 u5 u8) (Triple u1 u4 u7) (Triple u0 u3 u6))
+         (Triple (Triple f0 f1 f2) (Triple r3 r4 r5) (Triple r6 r7 r8))
+         (Triple (Triple l0 l1 l2) (Triple f3 f4 f5) (Triple f6 f7 f8)),
+       Triple
+         (Triple (Triple d0 d1 d2) (Triple d3 d4 d5) (Triple d6 d7 d8))
+         (Triple (Triple b0 b1 b2) (Triple l3 l4 l5) (Triple l6 l7 l8))
+         (Triple (Triple r0 r1 r2) (Triple b3 b4 b5) (Triple b6 b7 b8)))
+    | Right =>
+      (Triple
+         (Triple (Triple u0 u1 b6) (Triple u3 u4 b3) (Triple u6 u7 b0))
+         (Triple (Triple r2 r5 r8) (Triple r1 r4 r7) (Triple r0 r3 r6))
+         (Triple (Triple f0 f1 u2) (Triple f3 f4 u5) (Triple f6 f7 u8)),
+       Triple
+         (Triple (Triple d0 d1 f2) (Triple d3 d4 f5) (Triple d6 d7 f8))
+         (Triple (Triple l0 l1 l2) (Triple l3 l4 l5) (Triple l6 l7 l8))
+         (Triple (Triple d8 b1 b2) (Triple d5 b4 b5) (Triple d2 b7 b8)))
+    | Front =>
+      (Triple
+         (Triple (Triple u0 u1 u2) (Triple u3 u4 u5) (Triple r0 r3 r6))
+         (Triple (Triple d2 r1 r2) (Triple d1 r4 r5) (Triple d0 r7 r8))
+         (Triple (Triple f2 f5 f8) (Triple f1 f4 f7) (Triple f0 f3 f6)),
+       Triple
+         (Triple (Triple l2 l5 l8) (Triple d3 d4 d5) (Triple d6 d7 d8))
+         (Triple (Triple l0 l1 u8) (Triple l3 l4 u7) (Triple l6 l7 u6))
+         (Triple (Triple b0 b1 b2) (Triple b3 b4 b5) (Triple b6 b7 b8)))
+    | Down =>
+      (Triple
+         (Triple (Triple u0 u1 u2) (Triple u3 u4 u5) (Triple u6 u7 u8))
+         (Triple (Triple r0 r1 r2) (Triple r3 r4 r5) (Triple b6 b7 b8))
+         (Triple (Triple f0 f1 f2) (Triple f3 f4 f5) (Triple r6 r7 r8)),
+       Triple
+         (Triple (Triple d2 d5 d8) (Triple d1 d4 d7) (Triple d0 d3 d6))
+         (Triple (Triple l0 l1 l2) (Triple l3 l4 l5) (Triple f6 f7 f8))
+         (Triple (Triple b0 b1 b2) (Triple b3 b4 b5) (Triple l6 l7 l8)))
+    | Left =>
+      (Triple
+         (Triple (Triple f0 u1 u2) (Triple f3 u4 u5) (Triple f6 u7 u8))
+         (Triple (Triple r0 r1 r2) (Triple r3 r4 r5) (Triple r6 r7 r8))
+         (Triple (Triple d0 f1 f2) (Triple d3 f4 f5) (Triple d6 f7 f8)),
+       Triple
+         (Triple (Triple b8 d1 d2) (Triple b5 d4 d5) (Triple b2 d7 d8))
+         (Triple (Triple l2 l5 l8) (Triple l1 l4 l7) (Triple l0 l3 l6))
+         (Triple (Triple b0 b1 u6) (Triple b3 b4 u3) (Triple b6 b7 u0)))
+    | Back =>
+      (Triple
+         (Triple (Triple l6 l3 l0) (Triple u3 u4 u5) (Triple u6 u7 u8))
+         (Triple (Triple r0 r1 u0) (Triple r3 r4 u1) (Triple r6 r7 u2))
+         (Triple (Triple f0 f1 f2) (Triple f3 f4 f5) (Triple f6 f7 f8)),
+       Triple
+         (Triple (Triple d0 d1 d2) (Triple d3 d4 d5) (Triple r8 r5 r2))
+         (Triple (Triple d6 l1 l2) (Triple d7 l4 l5) (Triple d8 l7 l8))
+         (Triple (Triple b2 b5 b8) (Triple b1 b4 b7) (Triple b0 b3 b6)))
+    end
+  end.
 (* END GENERATED MOVES *)
 
 (** Expose each sticker so concrete permutation identities reduce directly. *)
@@ -203,6 +342,20 @@ Ltac destruct_state s :=
 
 (** Four clockwise quarter turns return every sticker to its original slot. *)
 Lemma quarter_four f s : quarter f (quarter f (quarter f (quarter f s))) = s.
+Proof.
+  destruct f; destruct_state s; reflexivity.
+Qed.
+
+(** The half-turn table is exactly two clockwise quarter turns, so the direct
+    definition may be unfolded wherever a proof prefers to reason about
+    quarter turns. *)
+Lemma half_spec f s : half f s = quarter f (quarter f s).
+Proof.
+  destruct f; destruct_state s; reflexivity.
+Qed.
+
+(** The counterclockwise table is exactly three clockwise quarter turns. *)
+Lemma quarter_inv_spec f s : quarter_inv f s = quarter f (quarter f (quarter f s)).
 Proof.
   destruct f; destruct_state s; reflexivity.
 Qed.
@@ -226,14 +379,19 @@ Proof.
   - destruct t; simpl; auto.
 Qed.
 
-(** Applying one, two, or three quarter turns realizes a move on the cube. *)
+(** Each turn amount reads its own table, so a move rebuilds the 54 stickers
+    once however far the face is turned. *)
 Definition m2f (m : move) (s : state) : state :=
   let (f, t) := m in
   match t with
   | CW => quarter f s
-  | Half => quarter f (quarter f s)
-  | CCW => quarter f (quarter f (quarter f s))
+  | Half => half f s
+  | CCW => quarter_inv f s
   end.
+
+(** Restate a move as repeated clockwise quarter turns. Proofs about moves
+    reduce with this and then argue about [quarter] alone. *)
+Ltac unfold_moves := cbn [m2f]; rewrite ?half_spec, ?quarter_inv_spec.
 
 (** Reversing a quarter turn undoes it; a half turn is its own inverse. *)
 Definition minv (m : move) : move :=
@@ -243,7 +401,7 @@ Definition minv (m : move) : move :=
 (** Following any move by its inverse restores the entire cube. *)
 Lemma moves_inv m s : m2f (minv m) (m2f m s) = s.
 Proof.
-  destruct m as [f t]; destruct t; simpl; apply quarter_four.
+  destruct m as [f t]; destruct t; cbn [minv]; unfold_moves; apply quarter_four.
 Qed.
 
 (** Inverting a move twice recovers the original move. *)

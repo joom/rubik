@@ -148,7 +148,7 @@ Qed.
 Lemma move_centers_fixed m g s :
   sticker_at (m2f m s) (g, Mid, Mid) = sticker_at s (g, Mid, Mid).
 Proof.
-  destruct m as [f []]; cbn [m2f]; repeat rewrite centers_fixed; reflexivity.
+  destruct m as [f []]; unfold_moves; repeat rewrite centers_fixed; reflexivity.
 Qed.
 
 (** Center preservation extends from individual moves to whole sequences. *)

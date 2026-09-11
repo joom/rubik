@@ -212,16 +212,11 @@ Lemma same_face_merge (f : face) (t1 t2 : turns) :
   (forall s, m2f (f, t2) (m2f (f, t1) s) = s) \/
   (exists t3, forall s, m2f (f, t2) (m2f (f, t1) s) = m2f (f, t3) s).
 Proof.
-  destruct t1, t2; simpl.
-  - right; exists Half; reflexivity.
-  - right; exists CCW; reflexivity.
-  - left; intro s; apply quarter_four.
-  - right; exists CCW; reflexivity.
-  - left; intro s; apply quarter_four.
-  - right; exists CW; intro s; rewrite quarter_four; reflexivity.
-  - left; intro s; apply quarter_four.
-  - right; exists CW; intro s; rewrite quarter_four; reflexivity.
-  - right; exists Half; intro s; rewrite (quarter_four f s); reflexivity.
+  destruct t1, t2;
+    [ right; exists Half | right; exists CCW | left
+    | right; exists CCW | left | right; exists CW
+    | left | right; exists CW | right; exists Half ];
+    intro s; unfold_moves; rewrite ?quarter_four; reflexivity.
 Qed.
 
 (** Quarter turns of opposite faces move disjoint cubies, so they commute. *)
@@ -237,7 +232,7 @@ Lemma move_comm f g t1 t2 s :
   opposite f g = true ->
   m2f (f, t1) (m2f (g, t2) s) = m2f (g, t2) (m2f (f, t1) s).
 Proof.
-  intro H; destruct t1, t2; simpl;
+  intro H; destruct t1, t2; unfold_moves;
     repeat rewrite (quarter_comm f g _ H); reflexivity.
 Qed.
 

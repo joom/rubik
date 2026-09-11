@@ -35,7 +35,7 @@ Lemma edge_count_move m s :
   total_count edge_count s <= 4 + total_count edge_count (m2f m s).
 Proof.
   destruct m as [f t]; destruct f, t; destruct_state s;
-    cbn [m2f quarter total_count edge_count];
+    cbn [m2f quarter half quarter_inv total_count edge_count];
     repeat match goal with
     | |- context [misplaced ?f ?c] =>
         let x := fresh "x" in
@@ -50,7 +50,7 @@ Lemma corner_count_move m s :
   total_count corner_count s <= 8 + total_count corner_count (m2f m s).
 Proof.
   destruct m as [f t]; destruct f, t; destruct_state s;
-    cbn [m2f quarter total_count corner_count];
+    cbn [m2f quarter half quarter_inv total_count corner_count];
     repeat match goal with
     | |- context [misplaced ?f ?c] =>
         let x := fresh "x" in
