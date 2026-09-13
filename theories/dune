@@ -2,4 +2,4 @@
  (name Rubik)
  (package rocq-rubik)
  (synopsis "A certified solver for the Rubik 3x3x3 cube")
- (theories Stdlib ExtLib))
+ (theories Stdlib))

@@ -98,6 +98,12 @@ Crane Extract Inlined Constant rl_screenshot =>
   "rl_screenshot(%a0)" From "raylib_helpers.h".
 Crane Extract Inlined Constant rl_file_exists =>
   "rl_file_exists(%a0)" From "raylib_helpers.h".
+Crane Extract Inlined Constant rl_begin_2d =>
+  "rl_begin_2d(%a0)" From "raylib_helpers.h".
+Crane Extract Inlined Constant rl_end_2d =>
+  "rl_end_2d()" From "raylib_helpers.h".
+Crane Extract Inlined Constant rl_mouse_scale =>
+  "rl_mouse_scale(%a0, %a1)" From "raylib_helpers.h".
 
 (** The structured wrappers, mapped through the same helpers so that no
     polymorphic Rocq body is ever generated for them. *)

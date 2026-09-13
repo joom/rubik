@@ -29,19 +29,14 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/native/generated/rubik.cpp")
   message(FATAL_ERROR "Run 'opam exec -- make extract' before configuring C++.")
 endif()
 
-# The generated code includes the raylib helper header, so the core carries
-# raylib's own include path to everything that links it.
-add_library(rubik_core STATIC native/generated/rubik.cpp)
-target_include_directories(rubik_core PUBLIC native/generated native crane/theories/cpp)
-target_link_libraries(rubik_core PUBLIC raylib)
-target_compile_options(rubik_core PRIVATE
-  $<$<CXX_COMPILER_ID:Clang,AppleClang>:-fbracket-depth=1024>)
-
-add_executable(rubik native/main.cpp)
-target_link_libraries(rubik PRIVATE rubik_core Threads::Threads)
+# The whole program is extracted, entry point included, so the executable is
+# the generated file and nothing else. The only hand-written C++ in the tree is
+# the binding headers the generated code includes.
+add_executable(rubik native/generated/rubik.cpp)
+target_include_directories(rubik PRIVATE native/generated native crane/theories/cpp)
+target_link_libraries(rubik PRIVATE raylib Threads::Threads)
 target_compile_options(rubik PRIVATE
-  $<$<CXX_COMPILER_ID:Clang,AppleClang>:-fbracket-depth=1024>
-  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall;-Wextra;-Wpedantic>)
+  $<$<CXX_COMPILER_ID:Clang,AppleClang>:-fbracket-depth=1024>)
 
 # Keep the licensed fonts next to the executable so launch does not depend on cwd.
 set(rubik_font_files

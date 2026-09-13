@@ -10,14 +10,14 @@ From Stdlib Require Import Arith List Reals.
 From Crane Require Import Mapping.Std Mapping.NatIntStd
   Mapping.ZInt Mapping.Real Monads.ITree.
 From Rubik Require Import BasicRubik Viewer native.Raylib
-  native.Job.
+  native.Job native.Proc.
 Import ListNotations ITreeNotations.
 Local Open Scope pstring_scope.
 Local Open Scope itree_scope.
 
 (** The viewer needs raylib for its window and one background job for its
     solver; neither binding knows about the other. *)
-Local Notation appE := (raylibE +' jobE).
+Local Notation appE := (raylibE +' jobE +' procE).
 
 (** A search in flight: the certified solver, run off the drawing thread. *)
 Definition search : Type := job (option (list nat)).
@@ -102,14 +102,22 @@ Definition status_text (st : nat) (pending : list nat) : PrimString.string :=
 
 (** * Palette *)
 
-Definition background : rl_color := rgb 15 21 32.
+(** The window and the 3D backdrop behind the cube: a warm off-white, so the
+    cube's black joints carry the contrast rather than the ground. *)
+Definition background : rl_color := rgb 242 242 236.
+
+(** Recessed areas inside the dark panel, which keep the old dark ground. *)
+Definition sunken : rl_color := rgb 15 21 32.
+
 Definition panel_fill : rl_color := rgb 24 33 47.
 Definition raised : rl_color := rgb 36 48 65.
 Definition hovered : rl_color := rgb 48 66 87.
 Definition muted : rl_color := rgb 147 165 187.
 Definition ink : rl_color := rgb 235 241 249.
 Definition accent : rl_color := rgb 84 217 195.
-Definition cubie_ink : rl_color := rgb 27 31 39.
+(** The cube's body, seen through the gaps between stickers and around its
+    silhouette. Black so the joints read against the light backdrop. *)
+Definition cubie_ink : rl_color := rgb 0 0 0.
 
 (** Sticker colors in U/R/F/D/L/B order, with white down, blue front, and red right.
     Swapping both U/D and F/B preserves the physical color scheme's handedness. *)
@@ -125,17 +133,18 @@ Definition sticker_color (n : nat) : rl_color := nth n palette ink.
     The window is a fixed size, so every rectangle is a constant. *)
 
 Definition window_w : nat := 1200.
-Definition window_h : nat := 800.
+Definition window_h : nat := 688.
 
 (** Pixel size of the off-screen target that holds the 3D view. *)
 Definition canvas_w : nat := 868.
-Definition canvas_h : nat := 704.
+Definition canvas_h : nat := 640.
 
-(** Where that target is blitted in the window. *)
-Definition canvas : rl_rect := Rect 20 24 868 704.
+(** Where that target is blitted in the window. The canvas and the panel end
+    at the same line, so the window has no strip left over below them. *)
+Definition canvas : rl_rect := Rect 20 24 868 640.
 
 (** The side panel and the left edge of its contents. *)
-Definition panel_box : rl_rect := Rect 900 24 280 560.
+Definition panel_box : rl_rect := Rect 900 24 280 640.
 Definition panel_x : R := 916.
 
 (** One shared track makes the mutually exclusive turn amounts a segmented control. *)
@@ -429,7 +438,10 @@ Record config : Type :=
     c_target : rl_texture;
     c_regular : rl_font;
     c_semibold : rl_font;
-    c_shot : option PrimString.string
+    c_shot : option PrimString.string;
+    (** Device pixels per layout pixel. One on a display raylib already
+        handles; two where it does not, as in a browser on a dense screen. *)
+    c_scale : nat
   }.
 
 (** Use regular text for guidance and semibold for titles, controls, and moves. *)
@@ -482,7 +494,8 @@ Definition draw_cube_now (colors : list nat) (a : option anim) (now : R)
       rl_pop
   end.
 
-(** Render the cube into the off-screen target and blit it into the window. *)
+(** Render the cube into the off-screen target. The target is as many pixels
+    across as the display is dense, so blitting it needs no scaling. *)
 Definition draw_scene (cfg : config) (o : orbit) (s : shown) (now : R)
   : itree appE unit :=
   rl_begin_target (c_target cfg) ;;
@@ -490,15 +503,19 @@ Definition draw_scene (cfg : config) (o : orbit) (s : shown) (now : R)
   rl_begin_3d (orbit_camera o) ;;
   draw_cube_now (s_colors s) (s_anim s) now ;;
   rl_end_3d ;;
-  rl_end_target ;;
-  rl_draw_target (c_target cfg) (rx canvas) (ry canvas).
+  rl_end_target.
+
+(** Blit it where the layout says, in device pixels, so it lands one for one. *)
+Definition blit_scene (cfg : config) : itree appE unit :=
+  let k := INR (c_scale cfg) in
+  rl_draw_target (c_target cfg) (rx canvas * k) (ry canvas * k).
 
 (** Draw one control, centring its label and dimming it when it is not live. *)
 Definition draw_button (cfg : config) (mx my : R) (b : button) : itree appE unit :=
   let over := andb (b_live b) (in_rect mx my (b_box b)) in
   let segment := Nat.leb panel_command (b_cmd b) in
   let fill := if b_sel b then accent else if over then hovered else raised in
-  let text_color := if b_sel b then background else if b_live b then ink else muted in
+  let text_color := if b_sel b then sunken else if b_live b then ink else muted in
   (if andb segment (negb (orb (b_sel b) over)) then Ret tt
    else rl_rectangle (b_box b) 0.22
           (if b_live b then fill else fade fill 35 100)) ;;
@@ -516,12 +533,14 @@ Definition draw (cfg : config) (a : app) (now : R) : itree appE unit :=
   let busy := searching v in
   p <- rl_mouse ;;
   let '(mx, my) := p in
+  draw_scene cfg (u_orbit (a_ui a)) (a_shown a) now ;;
   rl_begin_drawing ;;
   rl_clear background ;;
-  draw_scene cfg (u_orbit (a_ui a)) (a_shown a) now ;;
+  blit_scene cfg ;;
+  rl_begin_2d (INR (c_scale cfg)) ;;
   rl_rectangle panel_box 0.06 panel_fill ;;
   label cfg true "FACE TURNS" panel_x 40 16 ink ;;
-  rl_rectangle amount_track 0.3 background ;;
+  rl_rectangle amount_track 0.3 sunken ;;
   for_each (buttons busy (playing v) (negb (Nat.eqb (length pending) 0))
                     (u_turn (a_ui a)))
            (draw_button cfg mx my) ;;
@@ -534,9 +553,11 @@ Definition draw (cfg : config) (a : app) (now : R) : itree appE unit :=
       else label cfg true (moves_text line) panel_x (366 + 26 * INR row)%R 23 accent) ;;
   label cfg false "Home: white down, blue front" panel_x 534 14 muted ;;
   label cfg false "Red right. Drag orbits the view." panel_x 554 14 muted ;;
-  label cfg false "Drag to orbit  /  Scroll to zoom  /  Home to recenter" 36 757 17 muted ;;
-  label cfg false "U R F D L B  /  Shift: inverse  /  Alt: half" 36 778 13
+  label cfg false "Scroll to zoom. Home recenters." panel_x 582 14 muted ;;
+  label cfg false "U R F D L B turn a face." panel_x 602 14 muted ;;
+  label cfg false "Shift inverts, Alt half turns." panel_x 622 14
           (fade muted 70 100) ;;
+  rl_end_2d ;;
   rl_end_drawing.
 
 (** * Input *)
@@ -740,34 +761,70 @@ Definition shutdown (cfg : config) (j : option search) : itree appE unit :=
   rl_unload_font (c_semibold cfg) ;; rl_unload_font (c_regular cfg) ;;
   rl_close_window.
 
-(** Each guarded frame reads input, advances the cube, then presents the view. *)
-CoFixpoint frames (cfg : config) (a : app) : itree appE bool :=
+(** One frame: read input, advance the cube, present the view, and say whether
+    this was the last one. Kept separate from the loop because a browser drives
+    the loop itself, calling back once per animation frame. *)
+Definition step_frame (cfg : config) (a : app) : itree appE (bool * app) :=
   quit <- rl_should_close ;;
-  if quit : bool then shutdown cfg (a_job a) ;; Ret (k_ok (a_script a))
+  if quit : bool then Ret (true, a)
   else
     now <- rl_time ;;
     r <- step_input cfg a now ;;
     let '(key, u, k) := r in
-    if Nat.eqb key 28 then shutdown cfg (a_job a) ;; Ret (k_ok k)
+    if Nat.eqb key 28
+    then Ret (true, Mk (a_view a) (a_job a) u (a_shown a) k)
     else
       answered <- command key (a_view a) (a_job a) ;;
       let '(next, j) := answered in
       ready <- receive next j ;;
       let a' := Mk ready j u (advance (a_shown a) ready now) k in
       draw cfg a' now ;;
-      Tau (frames cfg a').
+      Ret (false, a').
+
+(** Each guarded frame steps once, until a frame says it was the last. *)
+CoFixpoint frames (cfg : config) (a : app) : itree appE bool :=
+  r <- step_frame cfg a ;;
+  let '(stop, a') := r in
+  if stop : bool
+  then shutdown cfg (a_job a') ;; Ret (k_ok (a_script a'))
+  else Tau (frames cfg a').
 
 (** Start solved, with nothing on screen yet and the script at its first step. *)
 Definition initial_app (shot : option PrimString.string) : app :=
   Mk (initial_view tt) None (Ui home_orbit false 0 0) (Shown [] [] None)
      (Script 0 0 (match shot with None => true | Some _ => false end)).
 
-(** Open the window, allocate the 3D target, and run until the user quits. *)
-Definition program (smoke : bool) (path : PrimString.string) : itree appE bool :=
-  let shot := if smoke then Some path else None in
-  rl_init_window "Rubik - a certified cube solver" window_w window_h ;;
-  rl_set_target_fps 60 ;;
+(** Open the window, load the fonts, and allocate the 3D target. Separate from
+    the loop so that a host which owns its own loop can still start us. *)
+Definition setup (scale : nat) (shot : option PrimString.string)
+  : itree appE (config * app) :=
+  rl_init_window "Rubik - a certified cube solver"
+    (window_w * scale) (window_h * scale) ;;
+  rl_mouse_scale (1 / INR scale) (1 / INR scale) ;;
   regular <- rl_load_font "assets/fonts/IBMPlexSans-Regular.ttf" 64 ;;
   semibold <- rl_load_font "assets/fonts/IBMPlexSans-SemiBold.ttf" 64 ;;
-  target <- rl_load_target canvas_w canvas_h ;;
-  frames (Config target regular semibold shot) (initial_app shot).
+  target <- rl_load_target (canvas_w * scale) (canvas_h * scale) ;;
+  Ret (Config target regular semibold shot scale, initial_app shot).
+
+(** Set up, then run until the user quits. The frame rate is capped here and
+    not in [setup], because a browser paces its own loop and asking raylib to
+    wait there would block the page. *)
+Definition program (shot : option PrimString.string) : itree appE bool :=
+  started <- setup 1 shot ;;
+  let '(cfg, a) := started in
+  rl_set_target_fps 60 ;;
+  frames cfg a.
+
+(** * Entry point
+
+    The program the host starts. Naming it [main] is what makes extraction
+    emit the C++ entry point, so there is no hand-written [main] to keep in
+    step with this one.
+
+    Setting [RUBIK_SMOKE] to a path runs the scripted self-test instead of
+    reading the keyboard, and writes its screenshot there. Extraction gives
+    [main] no arguments, so the choice arrives through the environment. *)
+Definition main : itree appE unit :=
+  shot <- proc_getenv "RUBIK_SMOKE" ;;
+  ok <- program shot ;;
+  proc_exit (if ok then 0 else 1).

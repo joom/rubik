@@ -47,7 +47,16 @@ inline void rl_close_window() {
   if (IsWindowReady()) CloseWindow();
 }
 
-inline bool rl_should_close() { return WindowShouldClose(); }
+// Under emscripten raylib's own check sleeps for a frame, which only works
+// with async support compiled in; and a page has no close button to answer
+// about anyway, since the browser owns the loop and the user closes the tab.
+inline bool rl_should_close() {
+#ifdef __EMSCRIPTEN__
+  return false;
+#else
+  return WindowShouldClose();
+#endif
+}
 
 inline void rl_set_target_fps(std::uint64_t fps) {
   SetTargetFPS(static_cast<int>(fps));
@@ -213,6 +222,22 @@ inline void rl_draw_target(rl_texture t, Real x, Real y) {
 
 inline void rl_screenshot(const std::string &path) {
   TakeScreenshot(path.c_str());
+}
+
+// Scale every later draw call about the top-left corner, so a layout written
+// in fixed pixels can be drawn onto a denser display.
+inline void rl_begin_2d(Real zoom) {
+  Camera2D camera{};
+  camera.zoom = rl_detail::f(zoom);
+  BeginMode2D(camera);
+}
+
+inline void rl_end_2d() { EndMode2D(); }
+
+// Pointer positions come back divided by this, so hit testing stays in the
+// same coordinates the layout is written in.
+inline void rl_mouse_scale(Real x, Real y) {
+  SetMouseScale(rl_detail::f(x), rl_detail::f(y));
 }
 
 inline bool rl_file_exists(const std::string &path) {

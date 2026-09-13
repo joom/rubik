@@ -4,7 +4,7 @@
 From Crane Require Import Mapping.Std Mapping.NatIntStd
   Mapping.ZInt Mapping.Real Monads.ITree.
 From Crane Require Extraction.
-From Rubik Require Import BasicRubik Viewer native.App.
+From Rubik Require Import Sticker native.App.
 
 (** Triples become value arrays, so solver snapshots share no reference counts
     across threads. *)
@@ -14,6 +14,6 @@ Crane Extract Inductive triple => "std::array<%t0, 3>"
 
 Set Crane Loopify.
 Set Crane Extraction Output Directory ".".
-Crane Extraction "rubik" init_state m2f run
-  colors_of from_colors move_code code_move solve_snapshot solve_request
-  program.
+(** [main] is the whole program: extraction emits the C++ entry point from it,
+    so the executable is the generated file and nothing else. *)
+Crane Extraction "rubik" main.

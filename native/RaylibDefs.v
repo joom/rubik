@@ -190,7 +190,11 @@ Inductive raylibE : Type -> Type :=
 | DrawRenderTexture : rl_texture -> R -> R -> raylibE unit
 (** Files. *)
 | TakeScreenshot : PrimString.string -> raylibE unit
-| FileExists : PrimString.string -> raylibE bool.
+| FileExists : PrimString.string -> raylibE bool
+(** Uniform scaling, for drawing a fixed layout onto a denser display. *)
+| BeginMode2D : R -> raylibE unit
+| EndMode2D : raylibE unit
+| SetMouseScale : R -> R -> raylibE unit.
 
 (** The effect functor itself is abstract; only its constructors extract. *)
 Crane Extract Skip raylibE.
@@ -338,6 +342,16 @@ Definition rl_screenshot {E} `{raylibE -< E} (path : PrimString.string)
 (** Whether a path names an existing file. *)
 Definition rl_file_exists {E} `{raylibE -< E} (path : PrimString.string)
   : itree E bool := embed (FileExists path).
+
+(** Scale everything drawn until [rl_end_2d] about the top-left corner. *)
+Definition rl_begin_2d {E} `{raylibE -< E} (zoom : R) : itree E unit :=
+  embed (BeginMode2D zoom).
+
+Definition rl_end_2d {E} `{raylibE -< E} : itree E unit := embed EndMode2D.
+
+(** Report pointer positions divided by this, so a scaled layout still hits. *)
+Definition rl_mouse_scale {E} `{raylibE -< E} (x y : R) : itree E unit :=
+  embed (SetMouseScale x y).
 
 (** * Structured interface
 

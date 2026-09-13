@@ -1,5 +1,4 @@
-; Both submodules are built in place: the extraction plugin and the game-tree
-; library never have to be installed over the user's opam switch. "build" is
-; the CMake tree.
-(vendored_dirs crane game-trees)
+; Crane is built in place: the extraction plugin never has to be installed
+; over the user's opam switch. "build" is the CMake tree.
+(vendored_dirs crane)
 (dirs :standard \ build html assets)

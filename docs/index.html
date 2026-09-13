@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rubik — a certified cube solver</title>
+    <!-- Hand-written. make web adds rubik.js, rubik.wasm and rubik.data
+         beside it; this file is not generated and is safe to edit. -->
+    <meta
+      name="description"
+      content="A Rubik's cube solver whose correctness is a theorem in Rocq, compiled to WebAssembly."
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f2f2ec;
+        --card: #ffffff;
+        --panel: #18212f;
+        --ink: #17202b;
+        --on-dark: #ebf1f9;
+        --muted: #5a6576;
+        --line: #dcdcd2;
+        --accent: #12786a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        font-size: 15px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        width: min(1220px, calc(100% - 28px));
+        margin: 0 auto;
+        padding: 22px 0 30px;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px 14px;
+        margin-bottom: 12px;
+      }
+      h1 { margin: 0; font-size: 1.45rem; letter-spacing: -0.01em; }
+      .lede { margin: 0; color: var(--muted); flex: 1 1 34ch; min-width: 30ch; }
+      .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+      .badge {
+        font-size: 0.76rem;
+        letter-spacing: 0.02em;
+        padding: 2px 9px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--muted);
+        background: var(--card);
+        text-decoration: none;
+      }
+      a.badge:hover { color: var(--accent); border-color: var(--accent); }
+      .stage {
+        position: relative;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+      canvas.emscripten {
+        display: block;
+        width: 100%;
+        aspect-ratio: 1200 / 688;
+        height: auto;
+        border: 0;
+        outline: none;
+        background: var(--bg);
+      }
+      #loading {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-content: center;
+        gap: 10px;
+        justify-items: center;
+        background: var(--bg);
+        transition: opacity 0.3s ease;
+      }
+      #loading.done { opacity: 0; pointer-events: none; }
+      .spinner {
+        width: 26px;
+        height: 26px;
+        border: 3px solid var(--line);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+      #status { color: var(--muted); font-size: 0.88rem; }
+      .notes {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+        gap: 8px 26px;
+        margin-top: 16px;
+      }
+      .note h2 {
+        margin: 0 0 3px;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+      .note p { margin: 0; font-size: 0.92rem; }
+      .note ul { margin: 0; padding-left: 1.1em; font-size: 0.92rem; }
+      .note li { margin: 0.12em 0; }
+      code, kbd {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      code { font-size: 0.88em; }
+      kbd {
+        font-size: 0.78em;
+        background: var(--panel);
+        color: var(--on-dark);
+        padding: 0.1em 0.36em;
+        border-radius: 3px;
+      }
+      a { color: var(--accent); text-underline-offset: 2px; }
+      footer {
+        margin-top: 18px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Rubik</h1>
+        <p class="lede">
+          A 3×3×3 cube solver written in Rocq with a machine-checked proof of
+          correctness, extracted to C++ with Crane, and rendered in the browser
+          through raylib and WebAssembly.
+        </p>
+      </header>
+
+      <div class="badges">
+        <a class="badge" href="https://rocq-prover.org/">Rocq</a>
+        <a class="badge" href="https://github.com/bloomberg/crane"
+          >Crane C++ extraction</a
+        >
+        <a class="badge" href="https://www.raylib.com/">raylib</a>
+        <a class="badge" href="https://emscripten.org/">Emscripten</a>
+        <a class="badge" href="https://kociemba.org/cube.htm"
+          >Kociemba two-phase</a
+        >
+      </div>
+
+      <div class="stage">
+        <canvas
+          class="emscripten"
+          id="canvas"
+          tabindex="-1"
+          oncontextmenu="event.preventDefault()"
+        ></canvas>
+        <div id="loading">
+          <div class="spinner"></div>
+          <div id="status">Loading…</div>
+        </div>
+      </div>
+
+      <div class="notes">
+        <div class="note">
+          <h2>Playing</h2>
+          <ul>
+            <li>
+              Click a face button, or press <kbd>U</kbd> <kbd>R</kbd>
+              <kbd>F</kbd> <kbd>D</kbd> <kbd>L</kbd> <kbd>B</kbd>.
+            </li>
+            <li>
+              <kbd>Shift</kbd> inverts a turn, <kbd>Alt</kbd> makes it a half
+              turn.
+            </li>
+            <li>
+              Drag to orbit, scroll to zoom, <kbd>Home</kbd> to recentre.
+            </li>
+          </ul>
+        </div>
+        <div class="note">
+          <h2>What is proved</h2>
+          <p>Any sequence the solver returns really solves the cube.</p>
+        </div>
+        <div class="note">
+          <h2>In the browser</h2>
+          <ul>
+            <li>
+              Searching runs on the drawing thread, since worker threads need
+              headers that static hosting does not send.
+            </li>
+            <li>
+              The page stops painting while <em>Solve</em> works. The desktop
+              build searches in the background.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <footer>
+        Source, proofs and build instructions:
+        <a href="https://github.com/joom/rubik">github.com/joom/rubik</a>. Grew
+        out of Laurent Théry's certified 2×2×2 solver.
+      </footer>
+    </main>
+
+    <script>
+      var statusLine = document.getElementById("status");
+      var loading = document.getElementById("loading");
+      var Module = {
+        canvas: document.getElementById("canvas"),
+        setStatus: function (text) {
+          if (!text) {
+            loading.classList.add("done");
+            return;
+          }
+          var match = /([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/.exec(text);
+          statusLine.textContent = match ? match[1].trim() + "…" : text;
+        },
+        print: function (text) {
+          console.log(text);
+        },
+        printErr: function (text) {
+          console.error(text);
+        },
+        onAbort: function (what) {
+          statusLine.textContent = "Aborted: " + what;
+        },
+      };
+      window.onerror = function () {
+        statusLine.textContent = "Something went wrong. See the console.";
+      };
+    </script>
+    <script async src="rubik.js"></script>
+  </body>
+</html>
