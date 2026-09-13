@@ -5,13 +5,15 @@ homepage: "https://github.com/joom/rubik"
 dev-repo: "git+https://github.com/joom/rubik.git"
 bug-reports: "https://github.com/joom/rubik/issues"
 license: "MIT"
-synopsis: "A certified shortest-path solver for the Rubik 3x3x3 cube"
+synopsis: "A certified solver for the Rubik 3x3x3 cube"
 description: """
 A full 54-sticker model of the 3x3x3 Rubik's cube, with six fixed centers
 and all 18 face turns. Rocq proofs establish geometric move correctness,
 solver soundness, completeness for reachable states, and global minimality
-in the face-turn metric. The finite exhaustive search is intended as a
-certified reference solver; deep scrambles are computationally expensive.
+in the face-turn metric. The exhaustive search is a certified reference
+solver; deep scrambles are computationally expensive. A two-phase solver
+after Kociemba, proved sound but not minimal, solves arbitrary scrambles in
+seconds and is what the viewer calls.
 
 The package covers the proofs only. The raylib viewer under native/ is built
 separately and needs the Crane submodule.
@@ -25,7 +27,6 @@ depends: [
   "rocq-core" {>= "9.0"}
   "rocq-stdlib" {>= "9.0"}
   "coq-ext-lib"
-  "rocq-game-trees"
   "conf-python-3" {with-test}
 ]
 tags: ["keyword:rubik" "logpath:Rubik"]

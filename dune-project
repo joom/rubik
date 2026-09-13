@@ -6,4 +6,4 @@
 
 (package
  (name rocq-rubik)
- (synopsis "A certified shortest-path solver for the Rubik 3x3x3 cube"))
+ (synopsis "A certified solver for the Rubik 3x3x3 cube"))

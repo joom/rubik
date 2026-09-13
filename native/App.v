@@ -7,9 +7,9 @@
 
 From Corelib Require Import PrimString.
 From Stdlib Require Import Arith List Reals.
-From Crane Require Import Mapping.Std Mapping.NatIntStd Mapping.DequeList
+From Crane Require Import Mapping.Std Mapping.NatIntStd
   Mapping.ZInt Mapping.Real Monads.ITree.
-From Rubik Require Import BasicRubik Solver Viewer native.Raylib
+From Rubik Require Import BasicRubik Viewer native.Raylib
   native.Job.
 Import ListNotations ITreeNotations.
 Local Open Scope pstring_scope.
@@ -92,7 +92,7 @@ Definition status_text (st : nat) (pending : list nat) : PrimString.string :=
   | 1 => "Searching - keep exploring the view"
   | 2 => match pending with
          | [] => "Already solved. No moves needed."
-         | _ => "Shortest solution found"
+         | _ => "Solution found"
          end
   | 3 => "Solved. Nicely done."
   | 4 => "No solution found. Reset the cube."
@@ -176,7 +176,7 @@ Definition buttons (busy playing has_plan : bool) (turn : nat)
    Button (Rect 1044 196 120 32) "Reset cube" 20 true false;
    Button (Rect 916 238 248 34) "Scramble / 20 turns" 19 (negb busy) false;
    Button (Rect 916 282 248 38)
-     (if busy then "Cancel search" else "Find shortest")
+     (if busy then "Cancel search" else "Solve")
      (if busy then 27 else 21) true false;
    Button (Rect 916 482 120 32) "Step" 22 (andb (negb busy) has_plan) false;
    Button (Rect 1044 482 120 32) (if playing then "Pause" else "Play") 23
@@ -765,7 +765,7 @@ Definition initial_app (shot : option PrimString.string) : app :=
 (** Open the window, allocate the 3D target, and run until the user quits. *)
 Definition program (smoke : bool) (path : PrimString.string) : itree appE bool :=
   let shot := if smoke then Some path else None in
-  rl_init_window "Rubik - shortest cube solutions" window_w window_h ;;
+  rl_init_window "Rubik - a certified cube solver" window_w window_h ;;
   rl_set_target_fps 60 ;;
   regular <- rl_load_font "assets/fonts/IBMPlexSans-Regular.ttf" 64 ;;
   semibold <- rl_load_font "assets/fonts/IBMPlexSans-SemiBold.ttf" 64 ;;

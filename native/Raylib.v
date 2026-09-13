@@ -4,7 +4,7 @@
     wrappers in [raylib_helpers.h]. Splitting the mappings out keeps the
     definitions usable under any extraction flavor. *)
 
-From Crane Require Import Mapping.Std Mapping.NatIntStd Mapping.DequeList
+From Crane Require Import Mapping.Std Mapping.NatIntStd
   Mapping.ZInt Mapping.Real Monads.ITree.
 From Crane Require Extraction.
 From Rubik Require Export native.RaylibDefs.

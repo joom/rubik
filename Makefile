@@ -5,7 +5,7 @@ DUNE ?= dune
 ROCQCHK ?= rocqchk
 BUILD := _build/default
 GENERATED := native/generated
-MODULES := BasicRubik Geometry Heuristic GameTree Solver Viewer Example
+MODULES := Sticker TurnTables BasicRubik Geometry CubieDefs CubieTables Cubie Subgroup Invariant Prune Admissible Tables Phase1 Phase2 Solve Viewer Example
 
 .DEFAULT_GOAL := all
 .PHONY: all extract check check-generated tests html install clean
@@ -25,11 +25,11 @@ extract:
 
 check-generated:
 	python3 scripts/generate_moves.py --check
+	python3 scripts/generate_cubies.py --check
 
 # Recheck the compiled proofs with the kernel, independently of the build.
 check: all check-generated
-	$(ROCQCHK) -silent -R $(BUILD)/game-trees/theories GameTrees \
-	  -R $(BUILD)/theories Rubik \
+	$(ROCQCHK) -silent -R $(BUILD)/theories Rubik \
 	  $(addprefix Rubik.,$(MODULES))
 
 tests: check

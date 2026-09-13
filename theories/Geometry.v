@@ -137,13 +137,6 @@ Proof.
   destruct f, g; destruct_state s; reflexivity.
 Qed.
 
-(** Four geometric quarter turns restore every sticker location. *)
-Theorem facelet_four f l :
-  turn_facelet f (turn_facelet f (turn_facelet f (turn_facelet f l))) = l.
-Proof.
-  destruct l as [[g row] col]; destruct f, g, row, col; reflexivity.
-Qed.
-
 (** Every allowed turn amount preserves all face centers. *)
 Lemma move_centers_fixed m g s :
   sticker_at (m2f m s) (g, Mid, Mid) = sticker_at s (g, Mid, Mid).

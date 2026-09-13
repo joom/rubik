@@ -1,138 +1,90 @@
 From Stdlib Require Import List.
-From Rubik Require Import Geometry Heuristic Solver Viewer.
+From Rubik Require Import Cubie Geometry Invariant Phase1 Subgroup Solve Tables Viewer.
 Import ListNotations.
 
-(** * Executable solver examples *)
+(** * Proof assumption audit
 
-(** An already solved cube needs no moves. *)
-Example solved : solve init_state = Some [].
-Proof.
-  lazy; reflexivity.
-Qed.
+    Every theorem below must report that it is closed under the global
+    context: the development rests on no axioms of its own. *)
 
-(** One clockwise right turn is solved by its inverse. *)
-Example right_turn : solve (m2f (Right, CW) init_state) = Some [(Right, CCW)].
-Proof.
-  lazy; reflexivity.
-Qed.
-
-(** A front half turn is undone by the same half turn. *)
-Example front_half_turn : solve (m2f (Front, Half) init_state) = Some [(Front, Half)].
-Proof.
-  lazy; reflexivity.
-Qed.
-
-(** A two-face scramble is solved by reversing and inverting its moves. *)
-Example two_turns :
-  solve (run init_state [(Right, CW); (Up, CW)]) = Some [(Up, CCW); (Right, CCW)].
-Proof.
-  lazy; reflexivity.
-Qed.
-
-(** All 18 single-turn scrambles have the expected one-move solution. *)
-Example every_single_turn m : solve (m2f m init_state) = Some [minv m].
-Proof.
-  destruct m as [f t]; destruct f, t; lazy; reflexivity.
-Qed.
-
-(** A sufficient explicit limit recovers the shortest two-move solution. *)
-Example bounded_shortest :
-  solve_bounded 2 (run init_state [(Right, CW); (Up, CW)]) =
-    Some [(Up, CCW); (Right, CCW)].
-Proof.
-  vm_compute; reflexivity.
-Qed.
-
-(** A one-move allowance cannot solve this two-face scramble. *)
-Example insufficient_depth :
-  solve_bounded 1 (run init_state [(Right, CW); (Up, CW)]) = None.
-Proof.
-  vm_compute; reflexivity.
-Qed.
-
-(** Three interacting faces exercise search beyond single-turn cases. *)
-Example three_faces :
-  solve_bounded 3 (run init_state [(Front, CW); (Right, Half); (Up, CCW)]) =
-    Some [(Up, CW); (Right, Half); (Front, CCW)].
-Proof.
-  vm_compute; reflexivity.
-Qed.
-
-(** Opposite faces commute; the pruned tree keeps descending face order. *)
-Example opposite_faces :
-  solve_bounded 2 (run init_state [(Up, CW); (Down, CW)]) =
-    Some [(Down, CCW); (Up, CCW)].
-Proof. vm_compute; reflexivity. Qed.
-
-(** Consecutive turns of one face collapse to a single half turn. *)
-Example repeated_face :
-  solve_bounded 1 (run init_state [(Right, CW); (Right, CW)]) =
-    Some [(Right, Half)].
-Proof. vm_compute; reflexivity. Qed.
-
-(** Both pruning rules reject redundant branches directly. *)
-Example pruned_branches :
-  allowed (Some (Right, CW)) (Right, CCW) = false /\
-  allowed (Some (Up, CW)) (Down, Half) = false /\
-  allowed (Some (Down, Half)) (Up, CW) = true.
-Proof. repeat split; reflexivity. Qed.
-
-(** * Sticker movement *)
-
-(** A front clockwise turn carries the upper front edge onto the right face. *)
-Example front_edge :
-  sticker_at (quarter Front init_state) (Right, Mid, Low) = Up.
-Proof.
-  reflexivity.
-Qed.
-
-(** The same turn carries the upper front right corner onto the right face. *)
-Example front_corner :
-  sticker_at (quarter Front init_state) (Right, High, Low) = Up.
-Proof.
-  reflexivity.
-Qed.
-
-(** * Invalid states *)
-
-(** A uniformly colored cube is representable but violates the fixed-center
-    invariant. *)
-Definition monochrome : state :=
-  (Triple (solid Up) (solid Up) (solid Up),
-   Triple (solid Up) (solid Up) (solid Up)).
-
-(** The center invariant proves total search rejects the monochrome cube. *)
-Example invalid_cube : solve monochrome = None.
-Proof.
-  apply solve_none; intro H.
-  pose proof (valid_centers monochrome H Right) as E; discriminate E.
-Qed.
-
-(** * Proof assumption audit *)
-
-(** Every theorem below must report that it is closed under the global context. *)
 Print Assumptions quarter_geometry.
-Print Assumptions solve_init.
-Print Assumptions solve_minimal.
-Print Assumptions solve_length.
-Print Assumptions solve_none.
-Print Assumptions solve_bounded_spec.
 Print Assumptions colors_roundtrip.
 Print Assumptions solve_request_correct.
 Print Assumptions accepted_solution_solves.
 
-Print Assumptions walk_plain.
-Print Assumptions canonical_exists.
+Print Assumptions paint_cquarter.
+Print Assumptions paint_crun.
+Print Assumptions to_cubies_paint.
+Print Assumptions paint_to_cubies.
+Print Assumptions in_G1_phase2.
+Print Assumptions twist_total_valid.
+Print Assumptions flip_total_valid.
+Print Assumptions slice_count_valid.
+Print Assumptions consistentb_admissible.
+Print Assumptions twists_cm2f.
+Print Assumptions flips_cm2f.
+Print Assumptions slice_mask_cm2f.
+Print Assumptions cpieces_cm2f.
+Print Assumptions e8pieces_cm2f.
+Print Assumptions e4pieces_cm2f.
+Print Assumptions twist_h_admissible.
+Print Assumptions cperm_h_admissible.
+Print Assumptions flip_h_admissible.
+Print Assumptions slice_h_admissible.
+Print Assumptions e8_h_admissible.
+Print Assumptions e4_h_admissible.
+Print Assumptions in_G1b_spec.
+Print Assumptions phase1_sound.
+Print Assumptions phase2_sound.
+Print Assumptions two_phase_sound.
+Print Assumptions solve_two_phase_sound.
 
-(** The edge bound rejects this branch before generating its children. *)
-Example heuristic_rejects :
-  feasible 1 (run init_state [(Right, CW); (Up, CW)]) = false.
+(** * Executable regressions
+
+    Small computations that would break loudly if the model drifted. *)
+
+(** A single twisted corner has correct centres and correct colours, yet no
+    scramble can produce it: the corner rotations of a reachable cube cancel. *)
+Example twisted_corner_unreachable :
+  ~ valid_state (paint (Cube (URF, T1) (UFL, T0) (ULB, T0) (UBR, T0)
+                             (DFR, T0) (DLF, T0) (DBL, T0) (DRB, T0)
+                             (UR, F0) (UF, F0) (UL, F0) (UB, F0)
+                             (DR, F0) (DF, F0) (DL, F0) (DB, F0)
+                             (FR, F0) (FL, F0) (BL, F0) (BR, F0))).
+Proof.
+  intro H; apply twist_total_valid in H.
+  rewrite to_cubies_paint in H; vm_compute in H; discriminate.
+Qed.
+
+(** A front quarter turn flips four edges, so it leaves the subgroup the
+    second phase searches. This is why the second phase may not use it. *)
+Example front_leaves_G1 : flips (cm2f (Front, CW) csolved) <> repeat F0 12.
+Proof. vm_compute; discriminate. Qed.
+
+(** Half turns of the same face stay inside it. *)
+Example front_half_keeps_G1 : in_G1 (cm2f (Front, Half) csolved).
+Proof. apply in_G1_phase2; [reflexivity | apply in_G1_csolved]. Qed.
+
+(** Reading a scrambled cube's pieces, turning them, and painting back agrees
+    with turning the stickers directly. *)
+Example cubies_roundtrip :
+  let s := run init_state [(Right, CW); (Up, Half); (Front, CCW)] in
+  paint (cm2f (Left, CW) (to_cubies s)) = m2f (Left, CW) s.
 Proof. vm_compute; reflexivity. Qed.
 
-(** The snapshot-only worker finds a solution without a user depth parameter. *)
-Example automatic_search :
-  solve_request (colors_of (run init_state [(Right, CW); (Up, CW)])) =
-    Some [move_code (Up, CCW); move_code (Right, CCW)].
-Proof. vm_compute; reflexivity. Qed.
+(** The monochrome cube fails the centre invariant, so it is not a cube any
+    scramble can produce. *)
+Definition monochrome : state :=
+  (Triple (solid Up) (solid Up) (solid Up),
+   Triple (solid Up) (solid Up) (solid Up)).
 
-Print Assumptions feasible_solution.
+(** Its centres disagree with the solved frame, which no legal move can do. *)
+Example monochrome_unreachable : ~ valid_state monochrome.
+Proof.
+  intro H; pose proof (valid_centers monochrome H Right) as E; discriminate E.
+Qed.
+
+(** Solving end to end is not exercised here. It would force the six pruning
+    tables to be built inside a proof term, which the kernel then has to
+    replay on every independent recheck. The solver is exercised by running
+    it, not by proving what it returns. *)

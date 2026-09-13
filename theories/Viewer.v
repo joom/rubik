@@ -1,5 +1,5 @@
 From Stdlib Require Import Arith Lia List.
-From Rubik Require Import BasicRubik Geometry Solver.
+From Rubik Require Import BasicRubik Geometry Solve.
 Import ListNotations.
 
 (** * A value-only boundary for the native viewer *)
@@ -75,23 +75,34 @@ Proof.
   rewrite move_code_roundtrip, IH; reflexivity.
 Qed.
 
-(** God's number in the face-turn metric bounds solutions of valid cubes by
-    twenty moves. This external diameter result is not assumed by our proofs. *)
-Definition max_depth : nat := 20.
+(** Twelve moves always suffice to reach the subgroup, and eighteen to finish
+    inside it. Both are external facts about Kociemba's decomposition and are
+    not assumed by any proof here: they only bound how long the worker looks
+    before giving up. *)
+Definition phase1_limit : nat := 12.
+(** And eighteen to finish inside it. *)
+Definition phase2_limit : nat := 18.
 
-(** The worker searches automatically through twenty moves on its snapshot. *)
+(** The worker solves its snapshot in two phases. The six pruning tables are
+    built once per request rather than once per node. *)
 Definition solve_snapshot (xs : list nat) : option (list nat) :=
-  option_map (map move_code) (solve_bounded max_depth (from_colors xs)).
+  let T1 := build_tables1 tt in
+  let T2 := build_tables2 tt in
+  option_map (map move_code)
+    (solve_two_phase T1 T2 phase1_limit phase2_limit (from_colors xs)).
 
-(** Every worker result decodes to a globally shortest solution of its snapshot. *)
+(** Every worker result decodes to a sequence that really solves its snapshot.
+    This is weaker than the exhaustive solver's guarantee, which was that the
+    sequence is as short as possible; two-phase solutions are short but not
+    always shortest. It holds however the tables came out. *)
 Theorem solve_snapshot_correct s p :
-  solve_snapshot (colors_of s) = Some p -> shortest s (map code_move p).
+  valid_state s -> solve_snapshot (colors_of s) = Some p ->
+  run s (map code_move p) = init_state.
 Proof.
-  unfold solve_snapshot; rewrite colors_roundtrip.
-  destruct (solve_bounded max_depth s) as [q|] eqn:E;
-    simpl; try discriminate.
+  intro Hv; unfold solve_snapshot; rewrite colors_roundtrip.
+  destruct (solve_two_phase _ _ _ _ s) as [q|] eqn:E; simpl; try discriminate.
   intro H; inversion H; subst p; rewrite path_code_roundtrip.
-  exact (proj1 (solve_bounded_spec _ _ _ E)).
+  exact (solve_two_phase_sound _ _ _ _ _ _ Hv E).
 Qed.
 
 (** The background job receives only the cube snapshot. *)
@@ -99,7 +110,8 @@ Definition solve_request : list nat -> option (list nat) := solve_snapshot.
 
 (** The job entry point carries the same guarantee as the solver itself. *)
 Theorem solve_request_correct s p :
-  solve_request (colors_of s) = Some p -> shortest s (map code_move p).
+  valid_state s -> solve_request (colors_of s) = Some p ->
+  run s (map code_move p) = init_state.
 Proof. apply solve_snapshot_correct. Qed.
 
 (** * Pure interaction state *)
