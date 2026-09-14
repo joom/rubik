@@ -38,6 +38,20 @@ target_link_libraries(rubik PRIVATE raylib Threads::Threads)
 target_compile_options(rubik PRIVATE
   $<$<CXX_COMPILER_ID:Clang,AppleClang>:-fbracket-depth=1024>)
 
+# The same extracted program, with its entry point renamed away, linked into a
+# batch solver. It exists only to produce the word tables the solving chain
+# uses; Rocq rechecks every word it prints, so nothing here is trusted.
+add_library(rubik_core OBJECT native/generated/rubik.cpp)
+target_compile_definitions(rubik_core PRIVATE main=rubik_generated_main)
+target_include_directories(rubik_core PRIVATE native/generated native crane/theories/cpp)
+target_link_libraries(rubik_core PRIVATE raylib)
+target_compile_options(rubik_core PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang>:-fbracket-depth=1024>)
+
+add_executable(solve_tool tools/solve_tool.cpp $<TARGET_OBJECTS:rubik_core>)
+target_include_directories(solve_tool PRIVATE native/generated native crane/theories/cpp)
+target_link_libraries(solve_tool PRIVATE raylib Threads::Threads)
+
 # Keep the licensed fonts next to the executable so launch does not depend on cwd.
 set(rubik_font_files
   "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/IBMPlexSans-Regular.ttf"

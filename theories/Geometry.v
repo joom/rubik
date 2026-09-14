@@ -139,7 +139,7 @@ Qed.
 
 (** Every allowed turn amount preserves all face centers. *)
 Lemma move_centers_fixed m g s :
-  sticker_at (m2f m s) (g, Mid, Mid) = sticker_at s (g, Mid, Mid).
+  sticker_at (turn m s) (g, Mid, Mid) = sticker_at s (g, Mid, Mid).
 Proof.
   destruct m as [f []]; unfold_moves; repeat rewrite centers_fixed; reflexivity.
 Qed.
@@ -149,7 +149,7 @@ Lemma run_centers_fixed p g s :
   sticker_at (run s p) (g, Mid, Mid) = sticker_at s (g, Mid, Mid).
 Proof.
   revert s; induction p as [| m p IH]; intro s; cbn [run fold_left]; auto.
-  change (sticker_at (run (m2f m s) p) (g, Mid, Mid) = sticker_at s (g, Mid, Mid)).
+  change (sticker_at (run (turn m s) p) (g, Mid, Mid) = sticker_at s (g, Mid, Mid)).
   rewrite IH; apply move_centers_fixed.
 Qed.
 

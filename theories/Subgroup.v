@@ -21,16 +21,16 @@ Definition slice_home : list bool :=
 Definition sliced (c : cube) : Prop := slice_mask c = slice_home.
 
 (** Membership in the subgroup the second phase searches. *)
-Definition in_G1 (c : cube) : Prop := oriented c /\ sliced c.
+Definition in_subgroup (c : cube) : Prop := oriented c /\ sliced c.
 
 (** The solved cube is in the subgroup. *)
-Lemma in_G1_csolved : in_G1 csolved.
+Lemma csolved_in_subgroup : in_subgroup csolved.
 Proof. repeat split. Qed.
 
 (** * The moves the second phase may use *)
 
 (** Up and down turn freely; the other four faces only by half turns. *)
-Definition phase2 (m : move) : bool :=
+Definition phase2_move (m : move) : bool :=
   match m with
   | (Up, _) | (Down, _) => true
   | (_, Half) => true
@@ -41,12 +41,13 @@ Definition phase2 (m : move) : bool :=
     what makes the two-phase decomposition correct: whatever the second phase
     does, the cube stays in the subgroup, so the orientation and slice work of
     the first phase is never undone. *)
-Theorem in_G1_phase2 m c : phase2 m = true -> in_G1 c -> in_G1 (cm2f m c).
+Theorem phase2_move_keeps_subgroup m c :
+  phase2_move m = true -> in_subgroup c -> in_subgroup (cturn m c).
 Proof.
   destruct m as [f t]; destruct f, t; try discriminate; intros _;
     intros [[Htw Hfl] Hsl]; destruct_cube c;
-    unfold in_G1, oriented, sliced, slice_mask, twists, flips, epieces in *;
-    cbn [cslots eslots cm2f cquarter
+    unfold in_subgroup, oriented, sliced, slice_mask, twists, flips, edge_pieces in *;
+    cbn [corner_slots edge_slots cturn cquarter
          xURF xUFL xULB xUBR xDFR xDLF xDBL xDRB
          yUR yUF yUL yUB yDR yDF yDL yDB yFR yFL yBL yBR
          cshift eshift fst snd map repeat] in *;
@@ -59,14 +60,14 @@ Qed.
     filtered. A constant defined by filtering another module's constant is
     emitted by extraction as an initializer that runs before that module is
     declared, which does not compile. *)
-Definition Movel2 : list move :=
+Definition phase2_moves : list move :=
   [(Up, CW); (Up, Half); (Up, CCW); (Right, Half); (Front, Half);
    (Down, CW); (Down, Half); (Down, CCW); (Left, Half); (Back, Half)].
 
 (** It is exactly the moves the second phase may use. *)
-Lemma Movel2_filter : Movel2 = filter phase2 Movel.
+Lemma phase2_moves_filter : phase2_moves = filter phase2_move all_moves.
 Proof. reflexivity. Qed.
 
 (** Every move in the list is one the second phase may use. *)
-Lemma Movel2_phase2 m : In m Movel2 -> phase2 m = true.
-Proof. rewrite Movel2_filter; intro H; apply filter_In in H; tauto. Qed.
+Lemma phase2_moves_allowed m : In m phase2_moves -> phase2_move m = true.
+Proof. rewrite phase2_moves_filter; intro H; apply filter_In in H; tauto. Qed.

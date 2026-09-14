@@ -1,5 +1,6 @@
 From Stdlib Require Import List.
-From Rubik Require Import Cubie Geometry Invariant Phase1 Subgroup Solve Tables Viewer.
+From Rubik Require Import Cubie Geometry Group Invariant Parity Phase1
+  Solvable Subgroup Solve Tables Viewer.
 Import ListNotations.
 
 (** * Proof assumption audit
@@ -9,35 +10,50 @@ Import ListNotations.
 
 Print Assumptions quarter_geometry.
 Print Assumptions colors_roundtrip.
-Print Assumptions solve_request_correct.
+Print Assumptions solve_request_sound.
 Print Assumptions accepted_solution_solves.
 
 Print Assumptions paint_cquarter.
 Print Assumptions paint_crun.
 Print Assumptions to_cubies_paint.
 Print Assumptions paint_to_cubies.
-Print Assumptions in_G1_phase2.
+Print Assumptions crun_element.
+Print Assumptions cparity_element.
+Print Assumptions full_solution.
+Print Assumptions subgroup_solution.
+Print Assumptions phase1_reach_bound.
+Print Assumptions phase2_reach_bound.
+Print Assumptions tables1_checked.
+Print Assumptions tables2_checked.
+Print Assumptions solve_two_phase_complete.
+Print Assumptions phase2_move_keeps_subgroup.
 Print Assumptions twist_total_valid.
 Print Assumptions flip_total_valid.
 Print Assumptions slice_count_valid.
 Print Assumptions consistentb_admissible.
-Print Assumptions twists_cm2f.
-Print Assumptions flips_cm2f.
-Print Assumptions slice_mask_cm2f.
-Print Assumptions cpieces_cm2f.
-Print Assumptions e8pieces_cm2f.
-Print Assumptions e4pieces_cm2f.
-Print Assumptions twist_h_admissible.
-Print Assumptions cperm_h_admissible.
-Print Assumptions flip_h_admissible.
-Print Assumptions slice_h_admissible.
-Print Assumptions e8_h_admissible.
-Print Assumptions e4_h_admissible.
-Print Assumptions in_G1b_spec.
+Print Assumptions twists_cturn.
+Print Assumptions flips_cturn.
+Print Assumptions slice_mask_cturn.
+Print Assumptions corner_pieces_cturn.
+Print Assumptions ud_pieces_cturn.
+Print Assumptions slice_pieces_cturn.
+Print Assumptions twist_estimate_admissible.
+Print Assumptions cornerperm_estimate_admissible.
+Print Assumptions flip_estimate_admissible.
+Print Assumptions slice_estimate_admissible.
+Print Assumptions udperm_estimate_admissible.
+Print Assumptions sliceperm_estimate_admissible.
+Print Assumptions in_subgroupb_spec.
 Print Assumptions phase1_sound.
 Print Assumptions phase2_sound.
 Print Assumptions two_phase_sound.
 Print Assumptions solve_two_phase_sound.
+Print Assumptions phase1_complete.
+Print Assumptions phase2_complete.
+Print Assumptions two_phase_complete.
+Print Assumptions solve_two_phase_complete.
+Print Assumptions solve_snapshot_complete.
+Print Assumptions solve_request_complete.
 
 (** * Executable regressions
 
@@ -58,18 +74,18 @@ Qed.
 
 (** A front quarter turn flips four edges, so it leaves the subgroup the
     second phase searches. This is why the second phase may not use it. *)
-Example front_leaves_G1 : flips (cm2f (Front, CW) csolved) <> repeat F0 12.
+Example front_leaves_subgroup : flips (cturn (Front, CW) csolved) <> repeat F0 12.
 Proof. vm_compute; discriminate. Qed.
 
 (** Half turns of the same face stay inside it. *)
-Example front_half_keeps_G1 : in_G1 (cm2f (Front, Half) csolved).
-Proof. apply in_G1_phase2; [reflexivity | apply in_G1_csolved]. Qed.
+Example front_half_keeps_subgroup : in_subgroup (cturn (Front, Half) csolved).
+Proof. apply phase2_move_keeps_subgroup; [reflexivity | apply csolved_in_subgroup]. Qed.
 
 (** Reading a scrambled cube's pieces, turning them, and painting back agrees
     with turning the stickers directly. *)
 Example cubies_roundtrip :
   let s := run init_state [(Right, CW); (Up, Half); (Front, CCW)] in
-  paint (cm2f (Left, CW) (to_cubies s)) = m2f (Left, CW) s.
+  paint (cturn (Left, CW) (to_cubies s)) = turn (Left, CW) s.
 Proof. vm_compute; reflexivity. Qed.
 
 (** The monochrome cube fails the centre invariant, so it is not a cube any

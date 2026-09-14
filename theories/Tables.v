@@ -35,48 +35,40 @@ Definition table : Type := trie.
 (** A table that promises nothing anywhere. *)
 Definition empty_table : table := Tip.
 
-(** Walk the bits of the index, least significant first, stopping when the
-    remaining index is zero.  The walk recurses on the trie, so it terminates
-    whatever the index is. *)
-Fixpoint tfind (t : table) (i : nat) : option nat :=
+(** Follow the index bit by bit, least significant first, one trie level per
+    bit. Binary indices make this pattern matching rather than arithmetic, so
+    a lookup costs one step per bit both here and in the extracted program. *)
+Fixpoint table_find (t : table) (i : positive) : option nat :=
   match t with
   | Tip => None
   | Bin v l r =>
-      if Nat.eqb i 0 then v
-      else if Nat.eqb (Nat.modulo i 2) 0
-           then tfind l (Nat.div i 2)
-           else tfind r (Nat.div i 2)
+      match i with
+      | xH => v
+      | xO j => table_find l j
+      | xI j => table_find r j
+      end
   end.
 
 (** How far this index still has to go. An index the builder never wrote
     reads as zero, which prunes nothing. *)
-Definition tget (t : table) (i : nat) : nat :=
-  match tfind t i with Some d => d | None => 0 end.
+Definition table_get (t : table) (i : positive) : nat :=
+  match table_find t i with Some d => d | None => 0 end.
 
 (** Whether the builder has already recorded a distance here. *)
-Definition tmem (t : table) (i : nat) : bool :=
-  match tfind t i with Some _ => true | None => false end.
+Definition table_mem (t : table) (i : positive) : bool :=
+  match table_find t i with Some _ => true | None => false end.
 
-(** Writing recurses on the index rather than the trie, so it is given a fuel.
-    Sixty-four bits is more than any index here needs, and writing happens only
-    while a table is being built. *)
-Fixpoint tset_aux (fuel : nat) (t : table) (i d : nat) : table :=
-  match fuel with
-  | 0 => t
-  | S k =>
-      let '(v, l, r) := match t with
-                        | Tip => (@None nat, Tip, Tip)
-                        | Bin v l r => (v, l, r)
-                        end in
-      if Nat.eqb i 0 then Bin (Some d) l r
-      else if Nat.eqb (Nat.modulo i 2) 0
-           then Bin v (tset_aux k l (Nat.div i 2) d) r
-           else Bin v l (tset_aux k r (Nat.div i 2) d)
+(** Recording a distance, growing the trie along the index's bits. *)
+Fixpoint table_set (t : table) (i : positive) (d : nat) : table :=
+  let '(v, l, r) := match t with
+                    | Tip => (@None nat, Tip, Tip)
+                    | Bin v l r => (v, l, r)
+                    end in
+  match i with
+  | xH => Bin (Some d) l r
+  | xO j => Bin v (table_set l j d) r
+  | xI j => Bin v l (table_set r j d)
   end.
-
-(** Record a distance, giving the write enough fuel for any index that
-    occurs here. *)
-Definition tset (t : table) (i d : nat) : table := tset_aux 64 t i d.
 
 (** * Building a table
 
@@ -84,14 +76,14 @@ Definition tset (t : table) (i d : nat) : table := tset_aux 64 t i d.
     each index is first reached.  Nothing about this is proved: whatever it
     produces is handed to [consistentb] before it is trusted. *)
 
-Definition visit {A : Type} (key : A -> nat) (d : nat)
+Definition visit {A : Type} (key : A -> positive) (d : nat)
     (acc : table * list A) (y : A) : table * list A :=
   let (t, seen) := acc in
-  if tmem t (key y) then (t, seen) else (tset t (key y) d, y :: seen).
+  if table_mem t (key y) then (t, seen) else (table_set t (key y) d, y :: seen).
 
 (** Expand the frontier one level at a time, recording the level at which
     each index is first reached. *)
-Fixpoint sweep {A : Type} (step : A -> list A) (key : A -> nat)
+Fixpoint sweep {A : Type} (step : A -> list A) (key : A -> positive)
     (fuel d : nat) (t : table) (frontier : list A) : table :=
   match fuel with
   | 0 => t
@@ -110,10 +102,10 @@ Fixpoint sweep {A : Type} (step : A -> list A) (key : A -> nat)
   end.
 
 (** The distance table for a set of goal states. *)
-Definition build {A : Type} (step : A -> list A) (key : A -> nat)
+Definition build_table {A : Type} (step : A -> list A) (key : A -> positive)
     (fuel : nat) (goals : list A) : table :=
   sweep step key fuel 0
-    (fold_left (fun t g => tset t (key g) 0) goals empty_table) goals.
+    (fold_left (fun t g => table_set t (key g) 0) goals empty_table) goals.
 
 (** * The corner-orientation coordinate
 
@@ -126,7 +118,7 @@ Definition build {A : Type} (step : A -> list A) (key : A -> nat)
     tables below are constants whose initialisers run these steps; reaching
     into another module's constant there means reading it before it is built,
     which silently yields an empty table and a heuristic of zero. *)
-Definition Movel1 : list move :=
+Definition table_moves : list move :=
   [(Up, CW); (Up, Half); (Up, CCW); (Right, CW); (Right, Half); (Right, CCW);
    (Front, CW); (Front, Half); (Front, CCW); (Down, CW); (Down, Half);
    (Down, CCW); (Left, CW); (Left, Half); (Left, CCW); (Back, CW);
@@ -134,7 +126,7 @@ Definition Movel1 : list move :=
 
 (** The literal really is every move, so a typo in it could not go
     unnoticed. *)
-Lemma Movel1_Movel : Movel1 = Movel.
+Lemma table_moves_all : table_moves = all_moves.
 Proof. reflexivity. Qed.
 
 (** Comparing rotations, so a tuple of them has decidable equality. *)
@@ -162,20 +154,20 @@ Definition embed_twists (l : list twist) : cube :=
 
 (** How one move acts on the rotations alone. *)
 Definition twist_move (m : move) (l : list twist) : list twist :=
-  twists (cm2f m (embed_twists l)).
+  twists (cturn m (embed_twists l)).
 
 (** The rotations really are a search space in their own right: a move changes
     them the same way whatever else the cube is doing. *)
-Theorem twists_cm2f m c : twists (cm2f m c) = twist_move m (twists c).
+Theorem twists_cturn m c : twists (cturn m c) = twist_move m (twists c).
 Proof.
   unfold twist_move; destruct_cube c; destruct m as [f a]; destruct f, a;
-    unfold twists, embed_twists; cbn [cslots cm2f cquarter
+    unfold twists, embed_twists; cbn [corner_slots cturn cquarter
       xURF xUFL xULB xUBR xDFR xDLF xDBL xDRB map]; reflexivity.
 Qed.
 
 (** The eighteen rotation tuples one move away. *)
 Definition twist_step (l : list twist) : list (list twist) :=
-  map (fun m => twist_move m l) Movel1.
+  map (fun m => twist_move m l) table_moves.
 
 (** The first phase is done with the corners when none of them is turned. *)
 Definition twist_goal (l : list twist) : bool :=
@@ -187,7 +179,7 @@ Definition twist_dom : list (list twist) := tuples 8 all_twists.
 (** Rotations stay eight in number, so stepping never leaves the space. *)
 Lemma twist_move_length m l : length l = 8 -> length (twist_move m l) = 8.
 Proof.
-  intro H; unfold twist_move, twists, cslots; rewrite length_map; reflexivity.
+  intro H; unfold twist_move, twists, corner_slots; rewrite length_map; reflexivity.
 Qed.
 
 (** A turn keeps the rotations eight in number, so stepping stays inside the
@@ -209,45 +201,51 @@ Qed.
     instead runs the standard library's binary arithmetic at every node of the
     search, which profiling showed to cost more than everything else put
     together. *)
-Definition twist_bits (t : twist) (k : nat) : nat :=
-  match t with T0 => 4 * k | T1 => 1 + 4 * k | T2 => 2 + 4 * k end.
+Definition twist_bits (t : twist) (k : positive) : positive :=
+  match t with
+  | T0 => xO (xO (k)) | T1 => xI (xO (k)) | T2 => xO (xI (k))
+  end.
 
 (** Two bits per corner, the head of the list in the low bits. *)
-Fixpoint twist_key (l : list twist) : nat :=
-  match l with [] => 0 | t :: r => twist_bits t (twist_key r) end.
+Fixpoint twist_key (l : list twist) : positive :=
+  match l with [] => xH | t :: r => twist_bits t (twist_key r) end.
 
 (** The distance table, built by breadth-first search outward from the solved
     rotations. How it was built is not part of any proof. *)
-Definition twist_table : table := build twist_step twist_key 30 [repeat T0 8].
+Definition twist_table : table := build_table twist_step twist_key 30 [repeat T0 8].
 
 (** The heuristic it defines: how far the corner rotations still have to go. *)
-Definition twist_h (l : list twist) : nat := tget twist_table (twist_key l).
+Definition twist_estimate (l : list twist) : nat :=
+  table_get twist_table (twist_key l).
 
 (** The index of a cube's rotations, read straight off its slots. Going via
     [twists] would allocate a list at every node of the search. *)
-Definition twist_index (c : cube) : nat :=
+Definition twist_index (c : cube) : positive :=
   twist_bits (snd (xURF c)) (twist_bits (snd (xUFL c)) (twist_bits (snd (xULB c))
     (twist_bits (snd (xUBR c)) (twist_bits (snd (xDFR c)) (twist_bits (snd (xDLF c))
-      (twist_bits (snd (xDBL c)) (twist_bits (snd (xDRB c)) 0))))))).
+      (twist_bits (snd (xDBL c)) (twist_bits (snd (xDRB c)) xH))))))).
 
 (** The index read off a cube is the index of that cube's rotations. *)
 Lemma twist_index_key c : twist_index c = twist_key (twists c).
 Proof. destruct c; reflexivity. Qed.
 
 (** Passing the consistency check makes the heuristic safe to prune with.
-
-    The check is left for the program to run at startup rather than being
-    discharged here. It is a claim about six thousand table entries, and a
-    proof by computation forces the kernel to replay that computation on every
-    independent recheck, which costs minutes where running it costs
-    milliseconds. The implication is what deserves a proof; the arithmetic
-    does not. *)
-Theorem twist_h_admissible :
-  consistentb twist_step twist_goal twist_dom twist_h = true ->
-  admissible_on twist_step twist_goal twist_dom twist_h.
+    The check itself is run by the kernel; see [twist_checked] below. *)
+Theorem twist_estimate_admissible :
+  consistentb twist_step twist_goal twist_dom twist_estimate = true ->
+  admissible_on twist_step twist_goal twist_dom twist_estimate.
 Proof.
   intro H; apply consistentb_admissible; [apply twist_dom_closed | exact H].
 Qed.
+
+(** And the check passes, so the corner rotations heuristic never overestimates.
+    Running it is a few hundred thousand table readings, which the
+    kernel does in well under a second. *)
+Lemma twist_checked : consistentb twist_step twist_goal twist_dom twist_estimate = true.
+Proof. vm_compute; reflexivity. Qed.
+
+Theorem twist_safe : admissible_on twist_step twist_goal twist_dom twist_estimate.
+Proof. apply twist_estimate_admissible, twist_checked. Qed.
 
 (** * The edge-orientation coordinate
 
@@ -277,19 +275,19 @@ Definition embed_flips (l : list flip) : cube :=
 
 (** How one move acts on the flips alone. *)
 Definition flip_move (m : move) (l : list flip) : list flip :=
-  flips (cm2f m (embed_flips l)).
+  flips (cturn m (embed_flips l)).
 
 (** The flips move the same way whatever else the cube is doing. *)
-Theorem flips_cm2f m c : flips (cm2f m c) = flip_move m (flips c).
+Theorem flips_cturn m c : flips (cturn m c) = flip_move m (flips c).
 Proof.
   unfold flip_move; destruct_cube c; destruct m as [f a]; destruct f, a;
-    unfold flips, embed_flips; cbn [eslots cm2f cquarter
+    unfold flips, embed_flips; cbn [edge_slots cturn cquarter
       yUR yUF yUL yUB yDR yDF yDL yDB yFR yFL yBL yBR map]; reflexivity.
 Qed.
 
 (** The eighteen flip tuples one move away. *)
 Definition flip_step (l : list flip) : list (list flip) :=
-  map (fun m => flip_move m l) Movel1.
+  map (fun m => flip_move m l) table_moves.
 
 (** The first phase is done with the edges when none of them is flipped. *)
 Definition flip_goal (l : list flip) : bool :=
@@ -300,7 +298,7 @@ Definition flip_dom : list (list flip) := tuples 12 all_flips.
 
 (** A turn keeps the flips twelve in number. *)
 Lemma flip_move_length m l : length (flip_move m l) = 12.
-Proof. unfold flip_move, flips, eslots; rewrite length_map; reflexivity. Qed.
+Proof. unfold flip_move, flips, edge_slots; rewrite length_map; reflexivity. Qed.
 
 (** So stepping stays inside the space. *)
 Lemma flip_dom_closed x y :
@@ -311,38 +309,48 @@ Proof.
 Qed.
 
 (** One bit per edge. *)
-Definition flip_bit (f : flip) (k : nat) : nat :=
-  match f with F0 => 2 * k | F1 => 1 + 2 * k end.
+Definition flip_bit (f : flip) (k : positive) : positive :=
+  match f with F0 => xO k | F1 => xI k end.
 
 (** The flips read as a binary numeral. *)
-Fixpoint flip_key (l : list flip) : nat :=
-  match l with [] => 0 | f :: r => flip_bit f (flip_key r) end.
+Fixpoint flip_key (l : list flip) : positive :=
+  match l with [] => xH | f :: r => flip_bit f (flip_key r) end.
 
 (** Distances to the unflipped state, built by breadth-first search. *)
-Definition flip_table : table := build flip_step flip_key 30 [repeat F0 12].
+Definition flip_table : table := build_table flip_step flip_key 30 [repeat F0 12].
 
 (** How far the edge flips still have to go. *)
-Definition flip_h (l : list flip) : nat := tget flip_table (flip_key l).
+Definition flip_estimate (l : list flip) : nat :=
+  table_get flip_table (flip_key l).
 
 (** The same for the flips and for the slice occupancy. *)
-Definition flip_index (c : cube) : nat :=
+Definition flip_index (c : cube) : positive :=
   flip_bit (snd (yUR c)) (flip_bit (snd (yUF c)) (flip_bit (snd (yUL c))
     (flip_bit (snd (yUB c)) (flip_bit (snd (yDR c)) (flip_bit (snd (yDF c))
       (flip_bit (snd (yDL c)) (flip_bit (snd (yDB c)) (flip_bit (snd (yFR c))
         (flip_bit (snd (yFL c)) (flip_bit (snd (yBL c))
-          (flip_bit (snd (yBR c)) 0))))))))))).
+          (flip_bit (snd (yBR c)) xH))))))))))).
 
 (** The index read off a cube is the index of that cube's flips. *)
 Lemma flip_index_key c : flip_index c = flip_key (flips c).
 Proof. destruct c; reflexivity. Qed.
 
 (** Passing its check makes the edge-orientation heuristic safe. *)
-Theorem flip_h_admissible :
-  consistentb flip_step flip_goal flip_dom flip_h = true ->
-  admissible_on flip_step flip_goal flip_dom flip_h.
+Theorem flip_estimate_admissible :
+  consistentb flip_step flip_goal flip_dom flip_estimate = true ->
+  admissible_on flip_step flip_goal flip_dom flip_estimate.
 Proof.
   intro H; apply consistentb_admissible; [apply flip_dom_closed | exact H].
 Qed.
+
+(** And the check passes, so the edge flips heuristic never overestimates.
+    Running it is a few hundred thousand table readings, which the
+    kernel does in well under a second. *)
+Lemma flip_checked : consistentb flip_step flip_goal flip_dom flip_estimate = true.
+Proof. vm_compute; reflexivity. Qed.
+
+Theorem flip_safe : admissible_on flip_step flip_goal flip_dom flip_estimate.
+Proof. apply flip_estimate_admissible, flip_checked. Qed.
 
 (** * The slice coordinate
 
@@ -373,13 +381,13 @@ Proof. destruct b; reflexivity. Qed.
 
 (** How one move acts on the slice occupancy alone. *)
 Definition slice_move (m : move) (l : list bool) : list bool :=
-  slice_mask (cm2f m (embed_slice l)).
+  slice_mask (cturn m (embed_slice l)).
 
 (** Which slots hold slice edges moves the same way whatever else is going on. *)
-Theorem slice_mask_cm2f m c : slice_mask (cm2f m c) = slice_move m (slice_mask c).
+Theorem slice_mask_cturn m c : slice_mask (cturn m c) = slice_move m (slice_mask c).
 Proof.
   unfold slice_move; destruct_cube c; destruct m as [f a]; destruct f, a;
-    unfold slice_mask, epieces, embed_slice; cbn [eslots cm2f cquarter
+    unfold slice_mask, edge_pieces, embed_slice; cbn [edge_slots cturn cquarter
       yUR yUF yUL yUB yDR yDF yDL yDB yFR yFL yBL yBR map];
     rewrite ?eshift_fst; cbn [fst];
     rewrite !is_slice_pick; reflexivity.
@@ -387,7 +395,7 @@ Qed.
 
 (** The eighteen occupancy masks one move away. *)
 Definition slice_step (l : list bool) : list (list bool) :=
-  map (fun m => slice_move m l) Movel1.
+  map (fun m => slice_move m l) table_moves.
 
 (** The first phase is done with the slice when its four edges are back in
     it. *)
@@ -400,7 +408,8 @@ Definition slice_dom : list (list bool) := tuples 12 [true; false].
 (** A turn keeps the mask twelve slots wide. *)
 Lemma slice_move_length m l : length (slice_move m l) = 12.
 Proof.
-  unfold slice_move, slice_mask, epieces, eslots; rewrite !length_map; reflexivity.
+  unfold slice_move, slice_mask, edge_pieces, edge_slots;
+    rewrite !length_map; reflexivity.
 Qed.
 
 (** So stepping stays inside the space. *)
@@ -412,37 +421,48 @@ Proof.
 Qed.
 
 (** One bit per slot, set when a slice edge sits there. *)
-Definition slice_bit (e : edge) (k : nat) : nat := if is_slice e then 1 + 2 * k else 2 * k.
+Definition slice_bit (e : edge) (k : positive) : positive :=
+  if is_slice e then xI k else xO k.
 
 (** The mask read as a binary numeral. *)
-Fixpoint slice_key (l : list bool) : nat :=
-  match l with [] => 0 | b :: r => (if b then 1 + 2 * slice_key r else 2 * slice_key r) end.
+Fixpoint slice_key (l : list bool) : positive :=
+  match l with [] => xH | b :: r => if b then xI (slice_key r) else xO (slice_key r) end.
 
 (** Distances to the slice being intact. *)
-Definition slice_table : table := build slice_step slice_key 30 [slice_home].
+Definition slice_table : table := build_table slice_step slice_key 30 [slice_home].
 
 (** How far the slice edges still have to travel. *)
-Definition slice_h (l : list bool) : nat := tget slice_table (slice_key l).
+Definition slice_estimate (l : list bool) : nat :=
+  table_get slice_table (slice_key l).
 
 (** The occupancy index read straight off a cube's slots. *)
-Definition slice_index (c : cube) : nat :=
+Definition slice_index (c : cube) : positive :=
   slice_bit (fst (yUR c)) (slice_bit (fst (yUF c)) (slice_bit (fst (yUL c))
     (slice_bit (fst (yUB c)) (slice_bit (fst (yDR c)) (slice_bit (fst (yDF c))
       (slice_bit (fst (yDL c)) (slice_bit (fst (yDB c)) (slice_bit (fst (yFR c))
         (slice_bit (fst (yFL c)) (slice_bit (fst (yBL c))
-          (slice_bit (fst (yBR c)) 0))))))))))).
+          (slice_bit (fst (yBR c)) xH))))))))))).
 
 (** And it agrees with the index of that cube's mask. *)
 Lemma slice_index_key c : slice_index c = slice_key (slice_mask c).
 Proof. destruct c; reflexivity. Qed.
 
 (** Passing its check makes the slice heuristic safe. *)
-Theorem slice_h_admissible :
-  consistentb slice_step slice_goal slice_dom slice_h = true ->
-  admissible_on slice_step slice_goal slice_dom slice_h.
+Theorem slice_estimate_admissible :
+  consistentb slice_step slice_goal slice_dom slice_estimate = true ->
+  admissible_on slice_step slice_goal slice_dom slice_estimate.
 Proof.
   intro H; apply consistentb_admissible; [apply slice_dom_closed | exact H].
 Qed.
+
+(** And the check passes, so the slice heuristic never overestimates.
+    Running it is a few hundred thousand table readings, which the
+    kernel does in well under a second. *)
+Lemma slice_checked : consistentb slice_step slice_goal slice_dom slice_estimate = true.
+Proof. vm_compute; reflexivity. Qed.
+
+Theorem slice_safe : admissible_on slice_step slice_goal slice_dom slice_estimate.
+Proof. apply slice_estimate_admissible, slice_checked. Qed.
 
 (** * The corner-permutation coordinate
 
@@ -458,7 +478,7 @@ Proof. decide equality. Defined.
 Definition all_corners : list corner := [URF; UFL; ULB; UBR; DFR; DLF; DBL; DRB].
 
 (** A cube with the corners placed as given and nothing turned. *)
-Definition embed_cperm (l : list corner) : cube :=
+Definition embed_cornerperm (l : list corner) : cube :=
   match l with
   | [a; b; c; d; e; f; g; h] =>
       Cube (a, T0) (b, T0) (c, T0) (d, T0) (e, T0) (f, T0) (g, T0) (h, T0)
@@ -468,33 +488,34 @@ Definition embed_cperm (l : list corner) : cube :=
   end.
 
 (** How one move rearranges the corners. *)
-Definition cperm_move (m : move) (l : list corner) : list corner :=
-  cpieces (cm2f m (embed_cperm l)).
+Definition cornerperm_move (m : move) (l : list corner) : list corner :=
+  corner_pieces (cturn m (embed_cornerperm l)).
 
 (** Where the corners sit moves the same way whatever else is going on. *)
-Theorem cpieces_cm2f m c : cpieces (cm2f m c) = cperm_move m (cpieces c).
+Theorem corner_pieces_cturn m c :
+  corner_pieces (cturn m c) = cornerperm_move m (corner_pieces c).
 Proof.
-  unfold cperm_move; destruct_cube c; destruct m as [f a]; destruct f, a;
-    unfold cpieces, embed_cperm; cbn [cslots cm2f cquarter
+  unfold cornerperm_move; destruct_cube c; destruct m as [f a]; destruct f, a;
+    unfold corner_pieces, embed_cornerperm; cbn [corner_slots cturn cquarter
       xURF xUFL xULB xUBR xDFR xDLF xDBL xDRB map];
     rewrite ?cshift_fst; cbn [fst]; reflexivity.
 Qed.
 
 (** The ten placements one allowed move away. *)
-Definition cperm_step (l : list corner) : list (list corner) :=
-  map (fun m => cperm_move m l) Movel2.
+Definition cornerperm_step (l : list corner) : list (list corner) :=
+  map (fun m => cornerperm_move m l) phase2_moves.
 
 (** The corners are done when each is back in its own slot. *)
-Definition cperm_goal (l : list corner) : bool :=
+Definition cornerperm_goal (l : list corner) : bool :=
   if list_eq_dec corner_eq_dec l all_corners then true else false.
 
 (** Every rearrangement of the eight corners. *)
-Definition cperm_dom : list (list corner) := perms all_corners.
+Definition cornerperm_dom : list (list corner) := perms all_corners.
 
 (** A turn rearranges the eight corners, so it cannot leave the space of
     rearrangements. *)
-Lemma cperm_move_perm m l :
-  In l cperm_dom -> Permutation l (cperm_move m l).
+Lemma cornerperm_move_perm m l :
+  In l cornerperm_dom -> Permutation l (cornerperm_move m l).
 Proof.
   intro Hl; apply perms_sound in Hl.
   assert (Hlen : length l = 8)
@@ -502,58 +523,76 @@ Proof.
   destruct l as [| a1 [| a2 [| a3 [| a4 [| a5 [| a6 [| a7 [| a8 [| a9 l]]]]]]]]];
     simpl in Hlen; try discriminate.
   destruct m as [f t]; destruct f, t;
-    unfold cperm_move, cpieces, embed_cperm;
-    cbn [cslots cm2f cquarter xURF xUFL xULB xUBR xDFR xDLF xDBL xDRB map];
+    unfold cornerperm_move, corner_pieces, embed_cornerperm;
+    cbn [corner_slots cturn cquarter xURF xUFL xULB xUBR xDFR xDLF xDBL xDRB map];
     rewrite ?cshift_fst; cbn [fst];
     apply (Permutation_count_occ corner_eq_dec); intro x; cbn;
     repeat (destruct (corner_eq_dec _ x)); lia.
 Qed.
 
 (** A turn rearranges corners, so stepping stays among rearrangements. *)
-Lemma cperm_dom_closed x y :
-  In x cperm_dom -> In y (cperm_step x) -> In y cperm_dom.
+Lemma cornerperm_dom_closed x y :
+  In x cornerperm_dom -> In y (cornerperm_step x) -> In y cornerperm_dom.
 Proof.
   intros Hx Hy; apply in_map_iff in Hy as [m [<- _]].
   apply perms_complete, perm_trans with x;
-    [apply perms_sound, Hx | apply cperm_move_perm, Hx].
+    [apply perms_sound, Hx | apply cornerperm_move_perm, Hx].
 Qed.
 
 (** Index a placement by reading the slots as a base-eight numeral. The key
     space is larger than the 40320 placements that occur, which costs nothing:
     the table is a radix tree and never stores an index it was not given. *)
-Definition corner_bits (x : corner) (k : nat) : nat :=
+Definition corner_bits (x : corner) (k : positive) : positive :=
   match x with
-  | URF => 8 * k | UFL => 1 + 8 * k | ULB => 2 + 8 * k | UBR => 3 + 8 * k
-  | DFR => 4 + 8 * k | DLF => 5 + 8 * k | DBL => 6 + 8 * k | DRB => 7 + 8 * k
+  | URF => xO (xO (xO (k)))
+  | UFL => xI (xO (xO (k)))
+  | ULB => xO (xI (xO (k)))
+  | UBR => xI (xI (xO (k)))
+  | DFR => xO (xO (xI (k)))
+  | DLF => xI (xO (xI (k)))
+  | DBL => xO (xI (xI (k)))
+  | DRB => xI (xI (xI (k)))
   end.
 
 (** Three bits per corner. *)
-Fixpoint cperm_key (l : list corner) : nat :=
-  match l with [] => 0 | x :: r => corner_bits x (cperm_key r) end.
+Fixpoint cornerperm_key (l : list corner) : positive :=
+  match l with [] => xH | x :: r => corner_bits x (cornerperm_key r) end.
 
 (** Distances to the corners being home, under the second phase's moves. *)
-Definition cperm_table : table := build cperm_step cperm_key 30 [all_corners].
+Definition cornerperm_table : table :=
+  build_table cornerperm_step cornerperm_key 30 [all_corners].
 
 (** How far the corners still have to travel. *)
-Definition cperm_h (l : list corner) : nat := tget cperm_table (cperm_key l).
+Definition cornerperm_estimate (l : list corner) : nat :=
+  table_get cornerperm_table (cornerperm_key l).
 
 (** The corner placement index read straight off a cube's slots. *)
-Definition cperm_index (c : cube) : nat :=
+Definition cornerperm_index (c : cube) : positive :=
   corner_bits (fst (xURF c)) (corner_bits (fst (xUFL c)) (corner_bits (fst (xULB c))
     (corner_bits (fst (xUBR c)) (corner_bits (fst (xDFR c)) (corner_bits (fst (xDLF c))
-      (corner_bits (fst (xDBL c)) (corner_bits (fst (xDRB c)) 0))))))).
+      (corner_bits (fst (xDBL c)) (corner_bits (fst (xDRB c)) xH))))))).
 
 (** And it agrees with the index of that cube's corners. *)
-Lemma cperm_index_key c : cperm_index c = cperm_key (cpieces c).
+Lemma cornerperm_index_key c : cornerperm_index c = cornerperm_key (corner_pieces c).
 Proof. destruct c; reflexivity. Qed.
 
 (** Passing its check makes the corner-placement heuristic safe. *)
-Theorem cperm_h_admissible :
-  consistentb cperm_step cperm_goal cperm_dom cperm_h = true ->
-  admissible_on cperm_step cperm_goal cperm_dom cperm_h.
+Theorem cornerperm_estimate_admissible :
+  consistentb cornerperm_step cornerperm_goal cornerperm_dom cornerperm_estimate
+    = true ->
+  admissible_on cornerperm_step cornerperm_goal cornerperm_dom cornerperm_estimate.
 Proof.
-  intro H; apply consistentb_admissible; [apply cperm_dom_closed | exact H].
+  intro H; apply consistentb_admissible; [apply cornerperm_dom_closed | exact H].
 Qed.
+
+(** And the check passes, so the corner placement heuristic never overestimates.
+    Running it is a few hundred thousand table readings, which the
+    kernel does in well under a second. *)
+Lemma cornerperm_checked : consistentb cornerperm_step cornerperm_goal cornerperm_dom cornerperm_estimate = true.
+Proof. vm_compute; reflexivity. Qed.
+
+Theorem cornerperm_safe : admissible_on cornerperm_step cornerperm_goal cornerperm_dom cornerperm_estimate.
+Proof. apply cornerperm_estimate_admissible, cornerperm_checked. Qed.
 
 (** * The edge-placement coordinates
 
@@ -570,7 +609,7 @@ Definition ud_edges : list edge := [UR; UF; UL; UB; DR; DF; DL; DB].
 Definition slice_edges : list edge := [FR; FL; BL; BR].
 
 (** A cube with the non-slice edges placed as given. *)
-Definition embed_e8 (l : list edge) : cube :=
+Definition embed_udperm (l : list edge) : cube :=
   match l with
   | [a; b; c; d; e; f; g; h] =>
       Cube (URF, T0) (UFL, T0) (ULB, T0) (UBR, T0)
@@ -581,7 +620,7 @@ Definition embed_e8 (l : list edge) : cube :=
   end.
 
 (** A cube with the slice edges placed as given. *)
-Definition embed_e4 (l : list edge) : cube :=
+Definition embed_sliceperm (l : list edge) : cube :=
   match l with
   | [a; b; c; d] =>
       Cube (URF, T0) (UFL, T0) (ULB, T0) (UBR, T0)
@@ -592,60 +631,60 @@ Definition embed_e4 (l : list edge) : cube :=
   end.
 
 (** How one allowed move rearranges the non-slice edges. *)
-Definition e8_move (m : move) (l : list edge) : list edge :=
-  e8pieces (cm2f m (embed_e8 l)).
+Definition udperm_move (m : move) (l : list edge) : list edge :=
+  ud_pieces (cturn m (embed_udperm l)).
 
 (** And the slice edges. *)
-Definition e4_move (m : move) (l : list edge) : list edge :=
-  e4pieces (cm2f m (embed_e4 l)).
+Definition sliceperm_move (m : move) (l : list edge) : list edge :=
+  slice_pieces (cturn m (embed_sliceperm l)).
 
 (** Both groups move on their own, so long as the move is one the second phase
     is allowed: those are exactly the moves that keep the groups apart. *)
-Theorem e8pieces_cm2f m c :
-  phase2 m = true -> e8pieces (cm2f m c) = e8_move m (e8pieces c).
+Theorem ud_pieces_cturn m c :
+  phase2_move m = true -> ud_pieces (cturn m c) = udperm_move m (ud_pieces c).
 Proof.
   destruct m as [f a]; destruct f, a; try discriminate; intros _;
-    unfold e8_move; destruct_cube c;
-    unfold e8pieces, epieces, embed_e8; cbn [eslots cm2f cquarter
+    unfold udperm_move; destruct_cube c;
+    unfold ud_pieces, edge_pieces, embed_udperm; cbn [edge_slots cturn cquarter
       yUR yUF yUL yUB yDR yDF yDL yDB yFR yFL yBL yBR map firstn];
     rewrite ?eshift_fst; cbn [fst]; reflexivity.
 Qed.
 
 (** The slice edges move on their own too, for the same reason. *)
-Theorem e4pieces_cm2f m c :
-  phase2 m = true -> e4pieces (cm2f m c) = e4_move m (e4pieces c).
+Theorem slice_pieces_cturn m c :
+  phase2_move m = true -> slice_pieces (cturn m c) = sliceperm_move m (slice_pieces c).
 Proof.
   destruct m as [f a]; destruct f, a; try discriminate; intros _;
-    unfold e4_move; destruct_cube c;
-    unfold e4pieces, epieces, embed_e4; cbn [eslots cm2f cquarter
+    unfold sliceperm_move; destruct_cube c;
+    unfold slice_pieces, edge_pieces, embed_sliceperm; cbn [edge_slots cturn cquarter
       yUR yUF yUL yUB yDR yDF yDL yDB yFR yFL yBL yBR map skipn];
     rewrite ?eshift_fst; cbn [fst]; reflexivity.
 Qed.
 
 (** The ten placements one allowed move away. *)
-Definition e8_step (l : list edge) : list (list edge) :=
-  map (fun m => e8_move m l) Movel2.
+Definition udperm_step (l : list edge) : list (list edge) :=
+  map (fun m => udperm_move m l) phase2_moves.
 
 (** Likewise for the slice. *)
-Definition e4_step (l : list edge) : list (list edge) :=
-  map (fun m => e4_move m l) Movel2.
+Definition sliceperm_step (l : list edge) : list (list edge) :=
+  map (fun m => sliceperm_move m l) phase2_moves.
 
 (** The non-slice edges are done when each is back in its own slot. *)
-Definition e8_goal (l : list edge) : bool :=
+Definition udperm_goal (l : list edge) : bool :=
   if list_eq_dec edge_eq_dec l ud_edges then true else false.
 
 (** Likewise for the slice edges. *)
-Definition e4_goal (l : list edge) : bool :=
+Definition sliceperm_goal (l : list edge) : bool :=
   if list_eq_dec edge_eq_dec l slice_edges then true else false.
 
 (** Every rearrangement of the eight non-slice edges. *)
-Definition e8_dom : list (list edge) := perms ud_edges.
+Definition udperm_dom : list (list edge) := perms ud_edges.
 (** And of the four slice edges. *)
-Definition e4_dom : list (list edge) := perms slice_edges.
+Definition sliceperm_dom : list (list edge) := perms slice_edges.
 
 (** An allowed move rearranges the eight without letting any escape. *)
-Lemma e8_move_perm m l :
-  phase2 m = true -> In l e8_dom -> Permutation l (e8_move m l).
+Lemma udperm_move_perm m l :
+  phase2_move m = true -> In l udperm_dom -> Permutation l (udperm_move m l).
 Proof.
   intros Hm Hl; apply perms_sound in Hl.
   assert (Hlen : length l = 8)
@@ -653,8 +692,8 @@ Proof.
   destruct l as [| a1 [| a2 [| a3 [| a4 [| a5 [| a6 [| a7 [| a8 [| a9 l]]]]]]]]];
     simpl in Hlen; try discriminate.
   destruct m as [f t]; destruct f, t; try discriminate;
-    unfold e8_move, e8pieces, epieces, embed_e8;
-    cbn [eslots cm2f cquarter yUR yUF yUL yUB yDR yDF yDL yDB
+    unfold udperm_move, ud_pieces, edge_pieces, embed_udperm;
+    cbn [edge_slots cturn cquarter yUR yUF yUL yUB yDR yDF yDL yDB
          yFR yFL yBL yBR map firstn];
     rewrite ?eshift_fst; cbn [fst];
     apply (Permutation_count_occ edge_eq_dec); intro x; cbn;
@@ -662,16 +701,16 @@ Proof.
 Qed.
 
 (** And rearranges the four within the slice. *)
-Lemma e4_move_perm m l :
-  phase2 m = true -> In l e4_dom -> Permutation l (e4_move m l).
+Lemma sliceperm_move_perm m l :
+  phase2_move m = true -> In l sliceperm_dom -> Permutation l (sliceperm_move m l).
 Proof.
   intros Hm Hl; apply perms_sound in Hl.
   assert (Hlen : length l = 4)
     by (rewrite <- (Permutation_length Hl); reflexivity).
   destruct l as [| a1 [| a2 [| a3 [| a4 [| a5 l]]]]]; simpl in Hlen; try discriminate.
   destruct m as [f t]; destruct f, t; try discriminate;
-    unfold e4_move, e4pieces, epieces, embed_e4;
-    cbn [eslots cm2f cquarter yUR yUF yUL yUB yDR yDF yDL yDB
+    unfold sliceperm_move, slice_pieces, edge_pieces, embed_sliceperm;
+    cbn [edge_slots cturn cquarter yUR yUF yUL yUB yDR yDF yDL yDB
          yFR yFL yBL yBR map skipn];
     rewrite ?eshift_fst; cbn [fst];
     apply (Permutation_count_occ edge_eq_dec); intro x; cbn;
@@ -679,79 +718,111 @@ Proof.
 Qed.
 
 (** So stepping stays among rearrangements. *)
-Lemma e8_dom_closed x y : In x e8_dom -> In y (e8_step x) -> In y e8_dom.
+Lemma udperm_dom_closed x y :
+  In x udperm_dom -> In y (udperm_step x) -> In y udperm_dom.
 Proof.
   intros Hx Hy; apply in_map_iff in Hy as [m [<- Hm]].
   apply perms_complete, perm_trans with x;
-    [apply perms_sound, Hx | apply e8_move_perm; auto using Movel2_phase2].
+    [apply perms_sound, Hx | apply udperm_move_perm; auto using phase2_moves_allowed].
 Qed.
 
 (** Likewise for the slice. *)
-Lemma e4_dom_closed x y : In x e4_dom -> In y (e4_step x) -> In y e4_dom.
+Lemma sliceperm_dom_closed x y :
+  In x sliceperm_dom -> In y (sliceperm_step x) -> In y sliceperm_dom.
 Proof.
   intros Hx Hy; apply in_map_iff in Hy as [m [<- Hm]].
   apply perms_complete, perm_trans with x;
-    [apply perms_sound, Hx | apply e4_move_perm; auto using Movel2_phase2].
+    [apply perms_sound, Hx | apply sliceperm_move_perm; auto using phase2_moves_allowed].
 Qed.
 
 (** Four bits per edge. *)
-Definition edge_bits (x : edge) (k : nat) : nat :=
+Definition edge_bits (x : edge) (k : positive) : positive :=
   match x with
-  | UR => 16 * k | UF => 1 + 16 * k | UL => 2 + 16 * k | UB => 3 + 16 * k
-  | DR => 4 + 16 * k | DF => 5 + 16 * k | DL => 6 + 16 * k | DB => 7 + 16 * k
-  | FR => 8 + 16 * k | FL => 9 + 16 * k | BL => 10 + 16 * k | BR => 11 + 16 * k
+  | UR => xO (xO (xO (xO (k))))
+  | UF => xI (xO (xO (xO (k))))
+  | UL => xO (xI (xO (xO (k))))
+  | UB => xI (xI (xO (xO (k))))
+  | DR => xO (xO (xI (xO (k))))
+  | DF => xI (xO (xI (xO (k))))
+  | DL => xO (xI (xI (xO (k))))
+  | DB => xI (xI (xI (xO (k))))
+  | FR => xO (xO (xO (xI (k))))
+  | FL => xI (xO (xO (xI (k))))
+  | BL => xO (xI (xO (xI (k))))
+  | BR => xI (xI (xO (xI (k))))
   end.
 
 (** A tuple of edges read as a numeral. *)
-Fixpoint edge_key (l : list edge) : nat :=
-  match l with [] => 0 | x :: r => edge_bits x (edge_key r) end.
+Fixpoint edge_key (l : list edge) : positive :=
+  match l with [] => xH | x :: r => edge_bits x (edge_key r) end.
 
 (** Indexing the non-slice placement. *)
-Definition e8_key (l : list edge) : nat := edge_key l.
+Definition udperm_key (l : list edge) : positive := edge_key l.
 (** And the slice placement. *)
-Definition e4_key (l : list edge) : nat := edge_key l.
+Definition sliceperm_key (l : list edge) : positive := edge_key l.
 
 (** Distances to the non-slice edges being home. *)
-Definition e8_table : table := build e8_step e8_key 30 [ud_edges].
+Definition udperm_table : table := build_table udperm_step udperm_key 30 [ud_edges].
 (** And to the slice edges being home. *)
-Definition e4_table : table := build e4_step e4_key 30 [slice_edges].
+Definition sliceperm_table : table :=
+  build_table sliceperm_step sliceperm_key 30 [slice_edges].
 
 (** The placement indices read straight off a cube's slots. *)
-Definition e8_index (c : cube) : nat :=
+Definition udperm_index (c : cube) : positive :=
   edge_bits (fst (yUR c)) (edge_bits (fst (yUF c)) (edge_bits (fst (yUL c))
     (edge_bits (fst (yUB c)) (edge_bits (fst (yDR c)) (edge_bits (fst (yDF c))
-      (edge_bits (fst (yDL c)) (edge_bits (fst (yDB c)) 0))))))).
+      (edge_bits (fst (yDL c)) (edge_bits (fst (yDB c)) xH))))))).
 
 (** The slice placement index, likewise. *)
-Definition e4_index (c : cube) : nat :=
+Definition sliceperm_index (c : cube) : positive :=
   edge_bits (fst (yFR c)) (edge_bits (fst (yFL c)) (edge_bits (fst (yBL c))
-    (edge_bits (fst (yBR c)) 0))).
+    (edge_bits (fst (yBR c)) xH))).
 
 (** Both agree with the indices of the cube's own edge tuples. *)
-Lemma e8_index_key c : e8_index c = e8_key (e8pieces c).
+Lemma udperm_index_key c : udperm_index c = udperm_key (ud_pieces c).
 Proof. destruct c; reflexivity. Qed.
 
 (** Likewise for the slice. *)
-Lemma e4_index_key c : e4_index c = e4_key (e4pieces c).
+Lemma sliceperm_index_key c : sliceperm_index c = sliceperm_key (slice_pieces c).
 Proof. destruct c; reflexivity. Qed.
 
 (** How far the non-slice edges still have to travel. *)
-Definition e8_h (l : list edge) : nat := tget e8_table (e8_key l).
+Definition udperm_estimate (l : list edge) : nat :=
+  table_get udperm_table (udperm_key l).
 (** And the slice edges. *)
-Definition e4_h (l : list edge) : nat := tget e4_table (e4_key l).
+Definition sliceperm_estimate (l : list edge) : nat :=
+  table_get sliceperm_table (sliceperm_key l).
 
 (** Passing their checks makes the edge-placement heuristics safe. *)
-Theorem e8_h_admissible :
-  consistentb e8_step e8_goal e8_dom e8_h = true ->
-  admissible_on e8_step e8_goal e8_dom e8_h.
+Theorem udperm_estimate_admissible :
+  consistentb udperm_step udperm_goal udperm_dom udperm_estimate = true ->
+  admissible_on udperm_step udperm_goal udperm_dom udperm_estimate.
 Proof.
-  intro H; apply consistentb_admissible; [apply e8_dom_closed | exact H].
+  intro H; apply consistentb_admissible; [apply udperm_dom_closed | exact H].
 Qed.
 
+(** And the check passes, so the outer edge placement heuristic never overestimates.
+    Running it is a few hundred thousand table readings, which the
+    kernel does in well under a second. *)
+Lemma udperm_checked : consistentb udperm_step udperm_goal udperm_dom udperm_estimate = true.
+Proof. vm_compute; reflexivity. Qed.
+
+Theorem udperm_safe : admissible_on udperm_step udperm_goal udperm_dom udperm_estimate.
+Proof. apply udperm_estimate_admissible, udperm_checked. Qed.
+
 (** Passing its check makes the slice heuristic safe too. *)
-Theorem e4_h_admissible :
-  consistentb e4_step e4_goal e4_dom e4_h = true ->
-  admissible_on e4_step e4_goal e4_dom e4_h.
+Theorem sliceperm_estimate_admissible :
+  consistentb sliceperm_step sliceperm_goal sliceperm_dom sliceperm_estimate = true ->
+  admissible_on sliceperm_step sliceperm_goal sliceperm_dom sliceperm_estimate.
 Proof.
-  intro H; apply consistentb_admissible; [apply e4_dom_closed | exact H].
+  intro H; apply consistentb_admissible; [apply sliceperm_dom_closed | exact H].
 Qed.
+
+(** And the check passes, so the slice placement heuristic never overestimates.
+    Running it is a few hundred thousand table readings, which the
+    kernel does in well under a second. *)
+Lemma sliceperm_checked : consistentb sliceperm_step sliceperm_goal sliceperm_dom sliceperm_estimate = true.
+Proof. vm_compute; reflexivity. Qed.
+
+Theorem sliceperm_safe : admissible_on sliceperm_step sliceperm_goal sliceperm_dom sliceperm_estimate.
+Proof. apply sliceperm_estimate_admissible, sliceperm_checked. Qed.

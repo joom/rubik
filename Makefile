@@ -5,7 +5,7 @@ DUNE ?= dune
 ROCQCHK ?= rocqchk
 BUILD := _build/default
 GENERATED := native/generated
-MODULES := Sticker TurnTables BasicRubik Geometry CubieDefs CubieTables Cubie Subgroup Invariant Prune Admissible Tables Phase1 Phase2 Solve Viewer Example
+MODULES := Sticker TurnTables BasicRubik Geometry CubieDefs CubieTables Cubie Group Parity ParityTables Subgroup Invariant Prune Chain ChainTables Domino DominoTables Solvable Admissible Tables Phase1 Phase2 Solve Viewer Example
 
 .DEFAULT_GOAL := all
 .PHONY: all extract check check-generated tests html install clean web
@@ -26,6 +26,7 @@ extract:
 check-generated:
 	python3 scripts/generate_moves.py --check
 	python3 scripts/generate_cubies.py --check
+	python3 scripts/generate_parity.py --check
 
 # Recheck the compiled proofs with the kernel, independently of the build.
 check: all check-generated

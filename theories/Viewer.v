@@ -75,13 +75,13 @@ Proof.
   rewrite move_code_roundtrip, IH; reflexivity.
 Qed.
 
-(** Twelve moves always suffice to reach the subgroup, and eighteen to finish
-    inside it. Both are external facts about Kociemba's decomposition and are
-    not assumed by any proof here: they only bound how long the worker looks
-    before giving up. *)
-Definition phase1_limit : nat := 12.
-(** And eighteen to finish inside it. *)
-Definition phase2_limit : nat := 18.
+(** How deep each phase may look before giving up. These are the lengths the
+    solving method in [Solvable.v] needs, which is what makes the search
+    provably answer. A real cube is finished far sooner, at about twelve moves
+    and eighteen, since the deepening stops at the first depth that works; the
+    limits only decide when the worker abandons a cube it cannot solve. *)
+Definition phase1_limit : nat := full_bound.
+Definition phase2_limit : nat := domino_bound.
 
 (** The worker solves its snapshot in two phases. The six pruning tables are
     built once per request rather than once per node. *)
@@ -95,7 +95,7 @@ Definition solve_snapshot (xs : list nat) : option (list nat) :=
     This is weaker than the exhaustive solver's guarantee, which was that the
     sequence is as short as possible; two-phase solutions are short but not
     always shortest. It holds however the tables came out. *)
-Theorem solve_snapshot_correct s p :
+Theorem solve_snapshot_sound s p :
   valid_state s -> solve_snapshot (colors_of s) = Some p ->
   run s (map code_move p) = init_state.
 Proof.
@@ -109,10 +109,10 @@ Qed.
 Definition solve_request : list nat -> option (list nat) := solve_snapshot.
 
 (** The job entry point carries the same guarantee as the solver itself. *)
-Theorem solve_request_correct s p :
+Theorem solve_request_sound s p :
   valid_state s -> solve_request (colors_of s) = Some p ->
   run s (map code_move p) = init_state.
-Proof. apply solve_snapshot_correct. Qed.
+Proof. apply solve_snapshot_sound. Qed.
 
 (** * Pure interaction state *)
 
@@ -140,13 +140,13 @@ Definition initial_view (_ : unit) : view := View init_state [] [] false Ready.
 
 (** Applying a manual turn records its inverse opportunity and discards stale solutions. *)
 Definition turn_view (m : move) (v : view) : view :=
-  View (m2f m (cube v)) (m :: history v) [] false Ready.
+  View (turn m (cube v)) (m :: history v) [] false Ready.
 
 (** Undo removes exactly one manual or playback move from the history. *)
 Definition undo_view (v : view) : view :=
   match history v with
   | [] => v
-  | m :: rest => View (m2f (minv m) (cube v)) rest [] false Ready
+  | m :: rest => View (turn (inverse m) (cube v)) rest [] false Ready
   end.
 
 (** Playback applies the next certified move while retaining the rest of the plan. *)
@@ -154,7 +154,7 @@ Definition step_view (v : view) : view :=
   match solution v with
   | [] => View (cube v) (history v) [] false (status v)
   | m :: rest =>
-      View (m2f m (cube v)) (m :: history v) rest
+      View (turn m (cube v)) (m :: history v) rest
            (andb (playing v) (negb (Nat.eqb (length rest) 0)))
            (if Nat.eqb (length rest) 0 then Solved else SolutionReady)
   end.
@@ -184,3 +184,18 @@ Proof. apply move_valid. Qed.
 (** Pending searches temporarily suppress cube edits until completion or cancellation. *)
 Definition searching (v : view) : bool :=
   match status v with Searching => true | _ => false end.
+
+(** The worker also always answers, with nothing assumed. *)
+Theorem solve_snapshot_complete s :
+  valid_state s -> exists p, solve_snapshot (colors_of s) = Some p.
+Proof.
+  intro Hv; unfold solve_snapshot, phase1_limit, phase2_limit;
+    rewrite colors_roundtrip.
+  destruct (solve_two_phase_complete tt tt s Hv) as [q Hq].
+  rewrite Hq; exists (map move_code q); reflexivity.
+Qed.
+
+(** The same for the job entry point. *)
+Theorem solve_request_complete s :
+  valid_state s -> exists p, solve_request (colors_of s) = Some p.
+Proof. apply solve_snapshot_complete. Qed.
