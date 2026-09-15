@@ -1,6 +1,5 @@
 From Stdlib Require Import List.
-From Rubik Require Import Cubie Geometry Group Invariant Parity Phase1
-  Solvable Subgroup Solve Tables Viewer.
+From Rubik Require Import Cube.Cubie Cube.Geometry Cube.Group Cube.Invariant Cube.Parity Search.Phase1 Bounds.Solvable Cube.Subgroup Search.Solve Search.Tables Viewer.
 Import ListNotations.
 
 (** * Proof assumption audit

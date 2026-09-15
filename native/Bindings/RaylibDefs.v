@@ -347,6 +347,7 @@ Definition rl_file_exists {E} `{raylibE -< E} (path : PrimString.string)
 Definition rl_begin_2d {E} `{raylibE -< E} (zoom : R) : itree E unit :=
   embed (BeginMode2D zoom).
 
+(** And leave it, so later drawing is back in window pixels. *)
 Definition rl_end_2d {E} `{raylibE -< E} : itree E unit := embed EndMode2D.
 
 (** Report pointer positions divided by this, so a scaled layout still hits. *)

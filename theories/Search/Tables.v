@@ -1,5 +1,5 @@
-From Stdlib Require Import List Lia PArith NArith Permutation FMapPositive.
-From Rubik Require Export Cubie Subgroup Invariant Admissible.
+From Stdlib Require Import List Lia PArith Permutation.
+From Rubik Require Export Cube.Cubie Cube.Subgroup Cube.Invariant Search.Admissible.
 Import ListNotations.
 
 (** * Coordinate tables
@@ -16,11 +16,12 @@ Import ListNotations.
 (** * Storage
 
     Tables are read in the innermost loop of the search, so they are kept in a
-    binary trie on the bits of the index.  The index is a plain number: an
-    earlier version indexed by [positive] and profiling showed the search
-    spending most of its time allocating and freeing those, since a fresh one
-    is built at every node.  A number extracts to a machine integer and costs
-    nothing to compute.
+    binary trie on the bits of the index. Indices are binary numerals, which
+    serves both ends of the development: a lookup is a walk down the
+    constructors rather than arithmetic, which is what lets the kernel run the
+    consistency checks below in seconds, and [native/Extract.v] maps the
+    numerals to a machine integer, so a fresh index still costs nothing to
+    build at every node of the search.
 
     An index the builder never wrote reads as zero, which is the safe
     direction: a heuristic of zero prunes nothing but never prunes away a
@@ -244,6 +245,7 @@ Qed.
 Lemma twist_checked : consistentb twist_step twist_goal twist_dom twist_estimate = true.
 Proof. vm_compute; reflexivity. Qed.
 
+(** so the corner-rotation heuristic never overestimates. *)
 Theorem twist_safe : admissible_on twist_step twist_goal twist_dom twist_estimate.
 Proof. apply twist_estimate_admissible, twist_checked. Qed.
 
@@ -349,6 +351,7 @@ Qed.
 Lemma flip_checked : consistentb flip_step flip_goal flip_dom flip_estimate = true.
 Proof. vm_compute; reflexivity. Qed.
 
+(** so the edge-flip heuristic never overestimates. *)
 Theorem flip_safe : admissible_on flip_step flip_goal flip_dom flip_estimate.
 Proof. apply flip_estimate_admissible, flip_checked. Qed.
 
@@ -461,6 +464,7 @@ Qed.
 Lemma slice_checked : consistentb slice_step slice_goal slice_dom slice_estimate = true.
 Proof. vm_compute; reflexivity. Qed.
 
+(** so the slice heuristic never overestimates. *)
 Theorem slice_safe : admissible_on slice_step slice_goal slice_dom slice_estimate.
 Proof. apply slice_estimate_admissible, slice_checked. Qed.
 
@@ -591,6 +595,7 @@ Qed.
 Lemma cornerperm_checked : consistentb cornerperm_step cornerperm_goal cornerperm_dom cornerperm_estimate = true.
 Proof. vm_compute; reflexivity. Qed.
 
+(** so the corner-placement heuristic never overestimates. *)
 Theorem cornerperm_safe : admissible_on cornerperm_step cornerperm_goal cornerperm_dom cornerperm_estimate.
 Proof. apply cornerperm_estimate_admissible, cornerperm_checked. Qed.
 
@@ -807,6 +812,7 @@ Qed.
 Lemma udperm_checked : consistentb udperm_step udperm_goal udperm_dom udperm_estimate = true.
 Proof. vm_compute; reflexivity. Qed.
 
+(** so the outer-edge heuristic never overestimates. *)
 Theorem udperm_safe : admissible_on udperm_step udperm_goal udperm_dom udperm_estimate.
 Proof. apply udperm_estimate_admissible, udperm_checked. Qed.
 
@@ -824,5 +830,6 @@ Qed.
 Lemma sliceperm_checked : consistentb sliceperm_step sliceperm_goal sliceperm_dom sliceperm_estimate = true.
 Proof. vm_compute; reflexivity. Qed.
 
+(** so the slice-placement heuristic never overestimates. *)
 Theorem sliceperm_safe : admissible_on sliceperm_step sliceperm_goal sliceperm_dom sliceperm_estimate.
 Proof. apply sliceperm_estimate_admissible, sliceperm_checked. Qed.

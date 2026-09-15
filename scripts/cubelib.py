@@ -1,7 +1,11 @@
-"""The cube group, mirroring theories/CubieDefs.v and theories/Group.v.
+"""The cube group, mirroring theories/Cube/CubieDefs.v and Cube/Group.v.
 
-Used only to build the word tables the solving chain needs. Rocq rechecks
-everything this produces, so a mistake here cannot make a proof unsound."""
+A library for the generators, not a command. It reads the move tables out
+of the generated Rocq file, so it cannot drift from what the proofs use.
+Rocq rechecks everything the generators produce, so a mistake here cannot
+make a proof unsound.
+"""
+
 import re
 from pathlib import Path
 
@@ -15,7 +19,7 @@ EI = {n: i for i, n in enumerate(EDGES)}
 
 def quarter_tables():
     """Per face: for each destination slot, (source slot, shift)."""
-    text = (ROOT / "theories/CubieTables.v").read_text()
+    text = (ROOT / "theories/Cube/CubieTables.v").read_text()
     body = text[text.index("Definition cquarter"):]
     body = body[:body.index("\n  end.")]
     out = {}
@@ -38,14 +42,9 @@ class Cube:
     def __init__(self, cp, co, ep, eo):
         self.cp, self.co, self.ep, self.eo = list(cp), list(co), list(ep), list(eo)
 
-    def key(self):
-        return (tuple(self.cp), tuple(self.co), tuple(self.ep), tuple(self.eo))
-
-    def __eq__(self, o):
-        return self.key() == o.key()
-
-    def __hash__(self):
-        return hash(self.key())
+    def __eq__(self, other):
+        return (self.cp, self.co, self.ep, self.eo) == \
+               (other.cp, other.co, other.ep, other.eo)
 
 
 SOLVED = Cube(range(8), [0] * 8, range(12), [0] * 12)
@@ -60,6 +59,7 @@ def compose(c, g):
 
 
 def _quarter_element(face, tables):
+    """The cube one clockwise turn of this face produces from solved."""
     cs, es = tables[face]
     return Cube([s for s, _ in cs], [k for _, k in cs],
                 [s for s, _ in es], [k for _, k in es])
@@ -98,6 +98,7 @@ def invert_word(word):
 
 
 def to_line(mode, c):
+    """One cube as a line for the batch solver: a mode letter then twenty slots."""
     parts = [mode]
     for i in range(8):
         parts += [str(c.cp[i]), str(c.co[i])]
@@ -129,6 +130,7 @@ def assign(free_slots, free_pieces, fixed):
 
 
 def _fill(n, mapping):
+    """A slot-indexed mapping read out as a list."""
     return [mapping[i] for i in range(n)]
 
 

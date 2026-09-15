@@ -5,7 +5,7 @@ From Crane Require Import Mapping.Std Mapping.NatIntStd
   Mapping.ZInt Mapping.Real Monads.ITree.
 From Crane Require Extraction.
 From Stdlib Require Import BinPos.
-From Rubik Require Import Sticker native.App.
+From Rubik Require Import Cube.Sticker Native.App.
 
 (** Triples become value arrays, so solver snapshots share no reference counts
     across threads. *)
@@ -16,7 +16,9 @@ Crane Extract Inductive triple => "std::array<%t0, 3>"
 (** Table indices are binary numbers, so a lookup is a walk down the bits
     rather than arithmetic on a machine word. Crane's own mapping sends
     [positive] to a 32-bit unsigned int; the edge-placement indices need
-    thirty-three bits, so it is mapped to a 64-bit one here. *)
+    thirty-three bits, so it is widened to a 64-bit one here. Overriding a
+    mapping that [Mapping.ZInt] already set is what the overlap warnings
+    below are about, and widening is the safe direction. *)
 Crane Extract Inductive positive =>
   "std::uint64_t"
   [ "(2 * %a0 + 1)" "(2 * %a0)" "UINT64_C(1)" ]

@@ -1,5 +1,9 @@
+; The bindings live in their own directory, so Bindings/Raylib.v is
+; Rubik.Native.Bindings.Raylib.
+(include_subdirs qualified)
+
 ; The viewer and its bindings, which need Crane and are not part of the
 ; installed package: the proofs above build without either.
 (coq.theory
- (name Rubik.native)
+ (name Rubik.Native)
  (theories Stdlib Crane ITree ExtLib Paco Rubik))

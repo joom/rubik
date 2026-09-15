@@ -3,7 +3,7 @@
    agree with the sticker tables, move for move. *)
 
 From Stdlib Require Import List.
-From Rubik Require Export CubieDefs.
+From Rubik Require Export Cube.CubieDefs.
 Import ListNotations.
 
 (** * Cubie tables

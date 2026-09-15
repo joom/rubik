@@ -1,5 +1,5 @@
-From Stdlib Require Import Arith List Lia PArith.
-From Rubik Require Export Tables Prune.
+From Stdlib Require Import Arith List Lia.
+From Rubik Require Export Search.Tables Search.Prune.
 Import ListNotations.
 
 (** * The first phase
@@ -127,9 +127,11 @@ Proof. destruct m as [f t]; destruct f, t; simpl; tauto. Qed.
 Lemma twists_length c : length (twists c) = 8.
 Proof. unfold twists, corner_slots; rewrite length_map; reflexivity. Qed.
 
+(** twelve flips, *)
 Lemma flips_length c : length (flips c) = 12.
 Proof. unfold flips, edge_slots; rewrite length_map; reflexivity. Qed.
 
+(** and twelve slots that are either slice or not. *)
 Lemma slice_mask_length c : length (slice_mask c) = 12.
 Proof.
   unfold slice_mask, edge_pieces, edge_slots; rewrite !length_map; reflexivity.
@@ -149,6 +151,7 @@ Proof.
       exists m; split; [reflexivity | apply table_moves_complete].
 Qed.
 
+(** The same for the edge flips, *)
 Lemma flip_reaches c q :
   in_subgroup (crun c q) -> reaches flip_step flip_goal (length q) (flips c).
 Proof.
@@ -161,6 +164,7 @@ Proof.
       exists m; split; [reflexivity | apply table_moves_complete].
 Qed.
 
+(** and for the slice. *)
 Lemma slice_reaches c q :
   in_subgroup (crun c q) -> reaches slice_step slice_goal (length q) (slice_mask c).
 Proof.
@@ -180,9 +184,11 @@ Lemma twist_lookup c :
   table_get twist_table (twist_index c) = twist_estimate (twists c).
 Proof. unfold twist_estimate; rewrite twist_index_key; reflexivity. Qed.
 
+(** The same for the flip table, *)
 Lemma flip_lookup c : table_get flip_table (flip_index c) = flip_estimate (flips c).
 Proof. unfold flip_estimate; rewrite flip_index_key; reflexivity. Qed.
 
+(** and for the slice table. *)
 Lemma slice_lookup c :
   table_get slice_table (slice_index c) = slice_estimate (slice_mask c).
 Proof. unfold slice_estimate; rewrite slice_index_key; reflexivity. Qed.
@@ -194,6 +200,7 @@ Definition tables1_ok : Prop :=
   consistentb flip_step flip_goal flip_dom flip_estimate = true /\
   consistentb slice_step slice_goal slice_dom slice_estimate = true.
 
+(** The kernel runs those three checks rather than taking them on trust. *)
 Theorem tables1_checked : tables1_ok.
 Proof.
   split; [apply twist_checked | split; [apply flip_checked | apply slice_checked]].

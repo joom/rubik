@@ -1,4 +1,4 @@
-From Stdlib Require Import Arith List Lia Permutation FMapPositive PArith.
+From Stdlib Require Import Arith List Lia Permutation.
 Import ListNotations.
 
 (** * Checked pruning tables

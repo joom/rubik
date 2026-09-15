@@ -3,7 +3,7 @@
    account of a turn in Geometry.v and against each other in BasicRubik.v. *)
 
 From Stdlib Require Import List.
-From Rubik Require Export Sticker.
+From Rubik Require Export Cube.Sticker.
 Import ListNotations.
 
 (** * Face turn tables

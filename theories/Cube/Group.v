@@ -1,5 +1,5 @@
 From Stdlib Require Import List.
-From Rubik Require Export Cubie.
+From Rubik Require Export Cube.Cubie.
 Import ListNotations.
 
 (** * The cube as a group
@@ -22,6 +22,7 @@ Definition getc (c : cube) (X : corner) : cslot :=
   | DFR => xDFR c | DLF => xDLF c | DBL => xDBL c | DRB => xDRB c
   end.
 
+(** And the piece in a named edge slot. *)
 Definition gete (c : cube) (Y : edge) : eslot :=
   match Y with
   | UR => yUR c | UF => yUF c | UL => yUL c | UB => yUB c
@@ -52,18 +53,12 @@ Qed.
 
 (** * Composition *)
 
-(** Rotating twice in a row adds the two amounts. *)
-Lemma cshift_shift k k' x : cshift k' (cshift k x) = cshift (twist_add k k') x.
-Proof. destruct x as [X t]; destruct k, k', t; reflexivity. Qed.
-
-Lemma eshift_shift k k' y : eshift k' (eshift k y) = eshift (flip_add k k') y.
-Proof. destruct y as [Y f]; destruct k, k', f; reflexivity. Qed.
-
 (** Follow one slot reading through a cube: the entry says which piece to look
     up and how much further to rotate what is found. *)
 Definition capply (c : cube) (x : cslot) : cslot :=
   let (X, t) := x in cshift t (getc c X).
 
+(** And the same for an edge reading. *)
 Definition eapply (c : cube) (y : eslot) : eslot :=
   let (Y, f) := y in eshift f (gete c Y).
 
@@ -78,9 +73,11 @@ Definition ccompose (c g : cube) : cube :=
        (eapply c (yDL g)) (eapply c (yDB g)) (eapply c (yFR g))
        (eapply c (yFL g)) (eapply c (yBL g)) (eapply c (yBR g)).
 
+(** A corner slot of a composition reads what the right cube says to read, *)
 Lemma getc_ccompose c g X : getc (ccompose c g) X = capply c (getc g X).
 Proof. destruct X; reflexivity. Qed.
 
+(** and the same for an edge slot. *)
 Lemma gete_ccompose c g Y : gete (ccompose c g) Y = eapply c (gete g Y).
 Proof. destruct Y; reflexivity. Qed.
 
@@ -88,6 +85,7 @@ Proof. destruct Y; reflexivity. Qed.
 Lemma getc_csolved X : getc csolved X = (X, T0).
 Proof. destruct X; reflexivity. Qed.
 
+(** and an edge slot its own piece, unflipped. *)
 Lemma gete_csolved Y : gete csolved Y = (Y, F0).
 Proof. destruct Y; reflexivity. Qed.
 
@@ -98,6 +96,7 @@ Proof.
     ?getc_csolved, ?gete_csolved; reflexivity.
 Qed.
 
+(** And on the left. *)
 Lemma ccompose_id_l g : ccompose csolved g = g.
 Proof.
   apply cube_ext; intro X; rewrite ?getc_ccompose, ?gete_ccompose.
@@ -115,18 +114,22 @@ Proof.
     destruct (getc c X) as [P u]; destruct u; reflexivity.
 Qed.
 
+(** And the same for an edge reading. *)
 Lemma eapply_shift c k y : eapply c (eshift k y) = eshift k (eapply c y).
 Proof.
   destruct y as [Y f]; destruct k, f; simpl;
     destruct (gete c Y) as [P u]; destruct u; reflexivity.
 Qed.
 
+(** Following a reading through a composition is following it through each in
+    turn, which is what makes composition associative. *)
 Lemma capply_ccompose a b x : capply (ccompose a b) x = capply a (capply b x).
 Proof.
   destruct x as [X t]; cbn [capply]; rewrite getc_ccompose.
   symmetry; apply capply_shift.
 Qed.
 
+(** The same for an edge reading. *)
 Lemma eapply_ccompose a b y : eapply (ccompose a b) y = eapply a (eapply b y).
 Proof.
   destruct y as [Y f]; cbn [eapply]; rewrite gete_ccompose.
@@ -150,14 +153,6 @@ Qed.
     solved. *)
 Lemma cquarter_element f d : cquarter f d = ccompose d (cquarter f csolved).
 Proof. destruct_cube d; destruct f; reflexivity. Qed.
-
-(** Hence a quarter turn passes through a composition. *)
-Lemma cquarter_ccompose f c g :
-  cquarter f (ccompose c g) = ccompose c (cquarter f g).
-Proof.
-  rewrite (cquarter_element f (ccompose c g)), ccompose_assoc,
-    <- (cquarter_element f g); reflexivity.
-Qed.
 
 (** The same for a whole move. *)
 Lemma cturn_element m d : cturn m d = ccompose d (cturn m csolved).
@@ -186,10 +181,6 @@ Proof.
     (cturn_element m c), ccompose_assoc; reflexivity.
 Qed.
 
-(** Composing with a sequence's cube is running the sequence. *)
-Corollary ccompose_crun c p : ccompose c (crun csolved p) = crun c p.
-Proof. symmetry; apply crun_element. Qed.
-
 (** * Sequences as group elements
 
     A sequence denotes the cube it produces from solved. Concatenating
@@ -203,6 +194,7 @@ Definition element (p : list move) : cube := crun csolved p.
 Lemma element_app p q : element (p ++ q) = ccompose (element p) (element q).
 Proof. unfold element; rewrite crun_app; apply crun_element. Qed.
 
+(** The empty sequence denotes the solved cube. *)
 Lemma element_nil : element [] = csolved.
 Proof. reflexivity. Qed.
 
@@ -211,29 +203,12 @@ Lemma crun_by_element c p : crun c p = ccompose c (element p).
 Proof. apply crun_element. Qed.
 
 (** Undoing a sequence composes to the solved cube on both sides, so the
-    reversed sequence denotes a two-sided inverse. *)
+    reversed sequence denotes an inverse. *)
 Lemma element_inverse_r p :
   ccompose (element p) (element (inverse_path p)) = csolved.
 Proof.
   rewrite <- element_app; unfold element; rewrite crun_app;
     apply crun_inverse_path.
-Qed.
-
-Lemma inverse_involutive m : inverse (inverse m) = m.
-Proof. destruct m as [f t]; destruct t; reflexivity. Qed.
-
-Lemma inverse_path_involutive p : inverse_path (inverse_path p) = p.
-Proof.
-  unfold inverse_path; rewrite map_rev, rev_involutive, map_map.
-  induction p as [| m p IH]; simpl;
-    [reflexivity | rewrite inverse_involutive, IH; reflexivity].
-Qed.
-
-Lemma element_inverse_l p :
-  ccompose (element (inverse_path p)) (element p) = csolved.
-Proof.
-  pose proof (element_inverse_r (inverse_path p)) as H;
-    rewrite inverse_path_involutive in H; exact H.
 Qed.
 
 (** * Leaving a piece alone
@@ -244,29 +219,17 @@ Qed.
 
 (** The pieces a rearrangement leaves exactly where they belong. *)
 Definition fixesc (g : cube) (P : corner) : Prop := getc g P = (P, T0).
+
+(** And the edge pieces. *)
 Definition fixese (g : cube) (P : edge) : Prop := gete g P = (P, F0).
 
 (** Composing on the left leaves such a slot reading alone, whatever it was. *)
 Lemma capply_fixesc g P t : fixesc g P -> capply g (P, t) = (P, t).
 Proof. unfold fixesc; intro H; cbn [capply]; rewrite H; destruct t; reflexivity. Qed.
 
+(** The same for an edge reading. *)
 Lemma eapply_fixese g P f : fixese g P -> eapply g (P, f) = (P, f).
 Proof. unfold fixese; intro H; cbn [eapply]; rewrite H; destruct f; reflexivity. Qed.
-
-(** So a slot already holding its own piece keeps it. *)
-Lemma getc_fixed g h X :
-  fixesc h (fst (getc g X)) -> getc (ccompose h g) X = getc g X.
-Proof.
-  intro H; rewrite getc_ccompose; destruct (getc g X) as [P t];
-    apply capply_fixesc, H.
-Qed.
-
-Lemma gete_fixed g h Y :
-  fixese h (fst (gete g Y)) -> gete (ccompose h g) Y = gete g Y.
-Proof.
-  intro H; rewrite gete_ccompose; destruct (gete g Y) as [P f];
-    apply eapply_fixese, H.
-Qed.
 
 (** A cube that can be solved is itself the cube of some sequence: undo the
     solution and the solved cube runs to it. *)

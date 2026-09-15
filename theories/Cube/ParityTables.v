@@ -3,7 +3,7 @@
    cannot drift apart without this one failing to compile. *)
 
 From Stdlib Require Import Arith List Lia Permutation Bool.
-From Rubik Require Export Parity.
+From Rubik Require Export Cube.Parity.
 Import ListNotations.
 
 (** * A quarter turn flips each list's parity
@@ -37,6 +37,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_corners_Up (r0 r1 r2 r3 r4 r5 r6 r7 : nat) :
   NoDup [r0; r1; r2; r3; r4; r5; r6; r7] -> NoDup [r3; r0; r1; r2; r4; r5; r6; r7].
 Proof.
@@ -74,6 +75,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_edges_Up (e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 : nat) :
   NoDup [e0; e1; e2; e3; e4; e5; e6; e7; e8; e9; e10; e11] -> NoDup [e3; e0; e1; e2; e4; e5; e6; e7; e8; e9; e10; e11].
 Proof.
@@ -111,6 +113,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_corners_Right (r0 r1 r2 r3 r4 r5 r6 r7 : nat) :
   NoDup [r0; r1; r2; r3; r4; r5; r6; r7] -> NoDup [r4; r1; r2; r0; r7; r5; r6; r3].
 Proof.
@@ -148,6 +151,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_edges_Right (e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 : nat) :
   NoDup [e0; e1; e2; e3; e4; e5; e6; e7; e8; e9; e10; e11] -> NoDup [e8; e1; e2; e3; e11; e5; e6; e7; e4; e9; e10; e0].
 Proof.
@@ -185,6 +189,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_corners_Front (r0 r1 r2 r3 r4 r5 r6 r7 : nat) :
   NoDup [r0; r1; r2; r3; r4; r5; r6; r7] -> NoDup [r1; r5; r2; r3; r0; r4; r6; r7].
 Proof.
@@ -222,6 +227,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_edges_Front (e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 : nat) :
   NoDup [e0; e1; e2; e3; e4; e5; e6; e7; e8; e9; e10; e11] -> NoDup [e0; e9; e2; e3; e4; e8; e6; e7; e1; e5; e10; e11].
 Proof.
@@ -259,6 +265,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_corners_Down (r0 r1 r2 r3 r4 r5 r6 r7 : nat) :
   NoDup [r0; r1; r2; r3; r4; r5; r6; r7] -> NoDup [r0; r1; r2; r3; r5; r6; r7; r4].
 Proof.
@@ -296,6 +303,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_edges_Down (e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 : nat) :
   NoDup [e0; e1; e2; e3; e4; e5; e6; e7; e8; e9; e10; e11] -> NoDup [e0; e1; e2; e3; e5; e6; e7; e4; e8; e9; e10; e11].
 Proof.
@@ -333,6 +341,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_corners_Left (r0 r1 r2 r3 r4 r5 r6 r7 : nat) :
   NoDup [r0; r1; r2; r3; r4; r5; r6; r7] -> NoDup [r0; r2; r6; r3; r4; r1; r5; r7].
 Proof.
@@ -370,6 +379,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_edges_Left (e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 : nat) :
   NoDup [e0; e1; e2; e3; e4; e5; e6; e7; e8; e9; e10; e11] -> NoDup [e0; e1; e10; e3; e4; e5; e9; e7; e8; e2; e6; e11].
 Proof.
@@ -407,6 +417,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_corners_Back (r0 r1 r2 r3 r4 r5 r6 r7 : nat) :
   NoDup [r0; r1; r2; r3; r4; r5; r6; r7] -> NoDup [r0; r1; r3; r7; r4; r5; r2; r6].
 Proof.
@@ -444,6 +455,7 @@ Proof.
   rewrite E, Bool.negb_involutive; reflexivity.
 Qed.
 
+(** And it keeps them all different, which the next exchange needs. *)
 Lemma nodup_edges_Back (e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 e10 e11 : nat) :
   NoDup [e0; e1; e2; e3; e4; e5; e6; e7; e8; e9; e10; e11] -> NoDup [e0; e1; e2; e11; e4; e5; e6; e10; e8; e9; e3; e7].
 Proof.

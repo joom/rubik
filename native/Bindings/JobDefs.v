@@ -17,6 +17,8 @@ Axiom job : Type -> Type.
 
 (** Starting, polling, and abandoning one background computation. *)
 #[universes(polymorphic)]
+
+(** The effects a background job offers: start one, poll it, or abandon it. *)
 Inductive jobE : Type -> Type :=
 | StartJob : forall {A B}, (A -> B) -> A -> jobE (job B)
 | PollJob : forall {B}, job B -> jobE (option B)

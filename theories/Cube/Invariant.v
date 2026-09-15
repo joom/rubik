@@ -1,5 +1,5 @@
 From Stdlib Require Import Arith List Lia.
-From Rubik Require Export Group ParityTables.
+From Rubik Require Export Cube.Group Cube.ParityTables.
 Import ListNotations.
 
 (** * Parity invariants
@@ -148,6 +148,7 @@ Definition corner_rank (X : corner) : nat :=
   | DFR => 4 | DLF => 5 | DBL => 6 | DRB => 7
   end.
 
+(** And a position for each edge slot. *)
 Definition edge_rank (Y : edge) : nat :=
   match Y with
   | UR => 0 | UF => 1 | UL => 2 | UB => 3 | DR => 4 | DF => 5
@@ -156,6 +157,8 @@ Definition edge_rank (Y : edge) : nat :=
 
 (** Where the corners sit and where the edges sit, as numbers. *)
 Definition cranks (c : cube) : list nat := map corner_rank (corner_pieces c).
+
+(** And where the edges sit. *)
 Definition eranks (c : cube) : list nat := map edge_rank (edge_pieces c).
 
 (** A cube whose pieces are all different, which every reachable cube is. *)
@@ -215,6 +218,7 @@ Proof.
     repeat apply wellformed_cquarter; exact H.
 Qed.
 
+(** And a whole move, being one, two or three of them. *)
 Lemma cparity_cturn m c : wellformed c -> cparity (cturn m c) = cparity c.
 Proof.
   destruct m as [f t]; destruct t; cbn [cturn]; intro H;
@@ -229,6 +233,7 @@ Proof.
   apply IH, wellformed_cturn, H.
 Qed.
 
+(** And a whole sequence. *)
 Lemma cparity_crun c p : wellformed c -> cparity (crun c p) = cparity c.
 Proof.
   revert c; induction p as [| m p IH]; intros c H; [reflexivity |].
@@ -243,6 +248,7 @@ Proof.
               csolved map fst]; repeat constructor; simpl; intuition discriminate.
 Qed.
 
+(** The solved cube is in order, so its parity is even, *)
 Lemma cparity_csolved : cparity csolved = false.
 Proof. reflexivity. Qed.
 
@@ -253,19 +259,10 @@ Proof. reflexivity. Qed.
 Theorem wellformed_element p : wellformed (element p).
 Proof. apply wellformed_crun, wellformed_csolved. Qed.
 
+(** and so is that of every cube a sequence produces. A cube with exactly two
+    pieces exchanged is odd, so no sequence produces it. *)
 Theorem cparity_element p : cparity (element p) = false.
 Proof.
   unfold element; rewrite cparity_crun by apply wellformed_csolved;
     apply cparity_csolved.
-Qed.
-
-(** The same for any cube a scramble can reach. *)
-Theorem cparity_csolvable c : csolvable c -> cparity c = false.
-Proof.
-  intro H; destruct (csolvable_element c H) as [r <-]; apply cparity_element.
-Qed.
-
-Theorem wellformed_csolvable c : csolvable c -> wellformed c.
-Proof.
-  intro H; destruct (csolvable_element c H) as [r <-]; apply wellformed_element.
 Qed.

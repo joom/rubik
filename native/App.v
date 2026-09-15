@@ -9,8 +9,8 @@ From Corelib Require Import PrimString.
 From Stdlib Require Import Arith List Reals.
 From Crane Require Import Mapping.Std Mapping.NatIntStd
   Mapping.ZInt Mapping.Real Monads.ITree.
-From Rubik Require Import BasicRubik Viewer native.Raylib
-  native.Job native.Proc.
+From Rubik Require Import Cube.BasicRubik Viewer Native.Bindings.Raylib
+  Native.Bindings.Job Native.Bindings.Proc.
 Import ListNotations ITreeNotations.
 Local Open Scope pstring_scope.
 Local Open Scope itree_scope.
@@ -24,9 +24,15 @@ Definition search : Type := job (option (list nat)).
 
 (** Named keys and buttons, at this application's effect type. *)
 Definition pressed (k : rl_key) : itree appE bool := rl_code_pressed (key_code k).
+
+(** Whether a key is down this frame, as opposed to newly pressed. *)
 Definition held (k : rl_key) : itree appE bool := rl_code_down (key_code k).
+
+(** Whether a mouse button went down this frame, *)
 Definition clicked (b : rl_button) : itree appE bool :=
   rl_button_code_pressed (button_code b).
+
+(** and whether it is being held. *)
 Definition dragging (b : rl_button) : itree appE bool :=
   rl_button_code_down (button_code b).
 
@@ -55,9 +61,6 @@ Fixpoint nat_text_aux (fuel n : nat) : PrimString.string :=
       else PrimString.cat (nat_text_aux rest (Nat.div n 10))
                           (digit_text (Nat.modulo n 10))
   end.
-
-(** A number written in decimal. *)
-Definition nat_text (n : nat) : PrimString.string := nat_text_aux (S n) n.
 
 (** The letter of a face, in the model's U/R/F/D/L/B order. *)
 Definition face_text (f : nat) : PrimString.string :=
@@ -109,11 +112,22 @@ Definition background : rl_color := rgb 242 242 236.
 (** Recessed areas inside the dark panel, which keep the old dark ground. *)
 Definition sunken : rl_color := rgb 15 21 32.
 
+(** The panel's own ground, dark against the light page. *)
 Definition panel_fill : rl_color := rgb 24 33 47.
+
+(** A button at rest, *)
 Definition raised : rl_color := rgb 36 48 65.
+
+(** and one under the pointer. *)
 Definition hovered : rl_color := rgb 48 66 87.
+
+(** Secondary text, for hints and labels. *)
 Definition muted : rl_color := rgb 147 165 187.
+
+(** Primary text. *)
 Definition ink : rl_color := rgb 235 241 249.
+
+(** The one saturated colour, for the selected turn amount. *)
 Definition accent : rl_color := rgb 84 217 195.
 (** The cube's body, seen through the gaps between stickers and around its
     silhouette. Black so the joints read against the light backdrop. *)
@@ -133,10 +147,14 @@ Definition sticker_color (n : nat) : rl_color := nth n palette ink.
     The window is a fixed size, so every rectangle is a constant. *)
 
 Definition window_w : nat := 1200.
+
+(** and its height. *)
 Definition window_h : nat := 688.
 
 (** Pixel size of the off-screen target that holds the 3D view. *)
 Definition canvas_w : nat := 868.
+
+(** and its height. *)
 Definition canvas_h : nat := 640.
 
 (** Where that target is blitted in the window. The canvas and the panel end
@@ -145,6 +163,8 @@ Definition canvas : rl_rect := Rect 20 24 868 640.
 
 (** The side panel and the left edge of its contents. *)
 Definition panel_box : rl_rect := Rect 900 24 280 640.
+
+(** Where the panel starts, in window pixels. *)
 Definition panel_x : R := 916.
 
 (** One shared track makes the mutually exclusive turn amounts a segmented control. *)
@@ -326,7 +346,10 @@ Definition selected (layer : option nat) (moving : bool) (v : rl_vec3) : bool :=
   | Some f => Bool.eqb (in_layer v f) moving
   end.
 
+(** The three rows or columns of a face, *)
 Definition thirds : list nat := [0; 1; 2].
+
+(** and the six faces in the model's order. *)
 Definition faces_in_order : list nat := [0; 1; 2; 3; 4; 5].
 
 (** The twenty-seven cubie centres. *)

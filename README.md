@@ -1,5 +1,7 @@
 # Rubik
 
+[![Proofs](https://github.com/joom/rubik/actions/workflows/proofs.yml/badge.svg)](https://github.com/joom/rubik/actions/workflows/proofs.yml)
+
 A certified 3×3×3 Rubik’s cube solver.
 
 This repository models all 54 stickers of a 3×3×3 cube and proves two things
@@ -22,13 +24,23 @@ opam exec -- make check
 ```
 
 The build is driven by **dune**: the `Makefile` is a thin set of entry points
-over `dune build`. `make` builds the proofs in [theories/](theories), and
-`make check` also checks the generated move tables and rechecks the compiled
-proofs with `rocqchk`, independently of the build. Python 3 is needed only for
-the table check and regeneration. `make install` installs the `Rubik`
-namespace.
+over `dune build`.
 
-## Model and moves
+| Target | Does |
+| --- | --- |
+| `make` | Builds the proofs in [theories/](theories). |
+| `make check` | Also rechecks them with `rocqchk`, independently of the build, and tests that the generated tables are not stale. |
+| `make check-chain` | The one slow staleness test, which needs the batch solver. |
+| `make extract` | Extracts the viewer to C++ under `native/generated/`. |
+| `make web` | Builds the WebAssembly bundle into [docs/](docs). |
+| `make html` | Renders the Rocqdoc. |
+| `make install` | Installs the `Rubik` namespace. |
+
+Python 3 is needed only for the generated tables. Everything but `make`,
+`make check`, `make html` and `make install` needs the Crane submodule and a
+C++ toolchain.
+
+## The cube and its moves
 
 A `state` contains six 3×3 sticker grids in the order **Up, Right, Front,
 Down, Left, Back**:
@@ -41,7 +53,7 @@ Definition grid := triple (triple color).
 Each grid contains three rows, each with three colors. Rows run top to bottom
 and columns left to right when viewing the face from outside. Colors use the
 six face names. `init_state` has each face uniformly colored with its own name.
-The coordinate convention is specified in [Geometry.v](theories/Geometry.v): +x is
+The coordinate convention is specified in [Geometry.v](theories/Cube/Geometry.v): +x is
 right, +y is up, and +z is front.
 
 A move is a pair `(face, amount)`, where the amount is `CW`, `Half`, or `CCW`.
@@ -62,27 +74,127 @@ can be represented, but the completeness theorem only requires the validity
 predicate. Whole-cube rotations are not moves; the solved center colors fix
 the reference frame.
 
+## Repository layout
+
+```
+theories/Cube/      what a cube is, and what is true of every reachable one
+theories/Bounds/    how deep the search may have to look, proved outright
+theories/Search/    the two-phase search the program runs
+theories/Viewer.v   the value-only boundary the native viewer talks to
+theories/Example.v  executable regressions and the assumption audit
+native/             the viewer itself, with its bindings under Bindings/
+scripts/            the generators for the tables checked into theories/
+tools/              a batch solver, used only to produce those tables
+web/ docs/          the WebAssembly build and the page that serves it
+```
+
+## How it fits together
+
+Every table in the repository is produced by something unproved and then
+re-derived by something proved. A generator may be wrong; it cannot make a
+proof wrong, only fail to compile.
+
+```
+  produced by                     what it produces        what re-derives it
+  --------------------------      ------------------      ------------------
+  generate_moves.py           ->  TurnTables.v        ->  quarter_geometry
+  generate_cubies.py          ->  CubieTables.v       ->  paint_cquarter
+  generate_parity.py          ->  ParityTables.v      ->  the proofs in it
+  generate_chain.py           ->  ChainTables.v       ->  chain_ok = true
+    through tools/solve_tool      DominoTables.v
+  a breadth-first search      ->  the six pruning     ->  tables1_checked
+    in Tables.v                   tables                  tables2_checked
+```
+
+The right-hand column is not a promise to run something later. It is what
+the kernel computes while the file compiles: the geometry of all 54 stickers,
+what each of the 334 stored sequences denotes, the consistency of all 95417
+pruning-table entries. A stale or wrong table is a build failure.
+
+Note the loop in the fourth row. The tables that prove the search complete
+were found by running the search. That is not circular, because nothing it
+answered is taken on its word: each answer is recomputed in Rocq, and the
+proof would go through the same way if the sequences had been guessed.
+
+From there the proofs become the program:
+
+```
+  theories/Cube       what a cube is
+        |
+  theories/Bounds     how deep the search may have to look
+        |
+  theories/Search     the two-phase search
+        |
+  theories/Viewer.v   the 54-number boundary, values only
+        |
+  native/App.v        the viewer loop, over the raylib bindings
+        |             Crane extraction
+  native/generated/rubik.cpp
+        |                      \
+  build/native/rubik            docs/rubik.wasm
+```
+
+The trusted base is therefore small: Rocq's kernel, which checks every proof
+and runs every table check, and the statements themselves, which are short
+enough to read. For the program, but not for the proofs, add Crane's
+translation to C++ and raylib under it. Nothing else counts. Not Python, not
+the batch solver, not the breadth-first builder, not the tables any of them
+produced.
+
 ## Modules
 
-Each file below depends only on the ones above it.
+Each file depends only on the ones before it, in the order below.
+
+### Cube
+
+What a cube is, and what is true of every reachable one.
 
 | Module | Holds |
 | --- | --- |
-| [Sticker.v](theories/Sticker.v) | The 54-sticker cube and the six faces. |
-| [TurnTables.v](theories/TurnTables.v) | *Generated.* One sticker permutation per turn amount. |
-| [BasicRubik.v](theories/BasicRubik.v) | The eighteen moves, sequences of them, and physical validity. |
-| [Geometry.v](theories/Geometry.v) | An independent 3D account of a turn, used to check the move tables. |
-| [CubieDefs.v](theories/CubieDefs.v) | The 8 corner and 12 edge pieces, their slots, and rotation arithmetic. |
-| [CubieTables.v](theories/CubieTables.v) | *Generated.* Which piece a turn moves where, and what colour each slot shows. |
-| [Cubie.v](theories/Cubie.v) | The bridge between pieces and stickers, and the projections each coordinate reads. |
-| [Subgroup.v](theories/Subgroup.v) | The subgroup the first phase aims at and the ten moves the second may use. |
-| [Invariant.v](theories/Invariant.v) | What no move can change, and the cubes that rules out. |
-| [Prune.v](theories/Prune.v) | Which moves are worth trying after a given move. |
-| [Admissible.v](theories/Admissible.v) | When a distance table is safe to prune with, and how to enumerate a coordinate space. |
-| [Tables.v](theories/Tables.v) | Table storage, the breadth-first builder, the six coordinates and their tables. |
-| [Phase1.v](theories/Phase1.v) | The search that reaches the subgroup. |
-| [Phase2.v](theories/Phase2.v) | The search that finishes inside it. |
-| [Solve.v](theories/Solve.v) | The two phases together, and the entry point the viewer calls. |
+| [Sticker.v](theories/Cube/Sticker.v) | The 54-sticker cube and the six faces. |
+| [TurnTables.v](theories/Cube/TurnTables.v) | *Generated.* One sticker permutation per turn amount. |
+| [BasicRubik.v](theories/Cube/BasicRubik.v) | The eighteen moves, sequences of them, and physical validity. |
+| [Geometry.v](theories/Cube/Geometry.v) | An independent 3D account of a turn, used to check the move tables. |
+| [CubieDefs.v](theories/Cube/CubieDefs.v) | The 8 corner and 12 edge pieces, their slots, and rotation arithmetic. |
+| [CubieTables.v](theories/Cube/CubieTables.v) | *Generated.* Which piece a turn moves where, and what colour each slot shows. |
+| [Cubie.v](theories/Cube/Cubie.v) | The bridge between pieces and stickers, and the projections each coordinate reads. |
+| [Group.v](theories/Cube/Group.v) | Cubes as rearrangements that compose, and what a sequence denotes. |
+| [Parity.v](theories/Cube/Parity.v) | Inversions of a rearrangement, and that an exchange flips their parity. |
+| [ParityTables.v](theories/Cube/ParityTables.v) | *Generated.* That each face's turn flips both lists' parity. |
+| [Subgroup.v](theories/Cube/Subgroup.v) | The subgroup the first phase aims at and the ten moves the second may use. |
+| [Invariant.v](theories/Cube/Invariant.v) | What no move can change, and the cubes that rules out. |
+
+### Bounds
+
+How deep each phase may have to look. A second solving method, slow but
+proved outright, whose only job is to say that what the search is asked for
+is really there. The program never runs it.
+
+| Module | Holds |
+| --- | --- |
+| [Chain.v](theories/Bounds/Chain.v) | A method that finishes one slot at a time from checked tables. |
+| [ChainTables.v](theories/Bounds/ChainTables.v) | *Generated.* Its tables, for all eighteen moves. |
+| [Domino.v](theories/Bounds/Domino.v) | The same method restricted to the ten allowed moves. |
+| [DominoTables.v](theories/Bounds/DominoTables.v) | *Generated.* Its tables. |
+| [Solvable.v](theories/Bounds/Solvable.v) | The two depths that method reaches, which is why the search always answers. |
+
+### Search
+
+The two-phase search the program actually runs.
+
+| Module | Holds |
+| --- | --- |
+| [Prune.v](theories/Search/Prune.v) | Which moves are worth trying after a given move. |
+| [Admissible.v](theories/Search/Admissible.v) | When a distance table is safe to prune with, and how to enumerate a coordinate space. |
+| [Tables.v](theories/Search/Tables.v) | Table storage, the breadth-first builder, the six coordinates and their tables. |
+| [Phase1.v](theories/Search/Phase1.v) | The search that reaches the subgroup. |
+| [Phase2.v](theories/Search/Phase2.v) | The search that finishes inside it. |
+| [Solve.v](theories/Search/Solve.v) | The two phases together, and the entry point the viewer calls. |
+
+### Boundary
+
+| Module | Holds |
+| --- | --- |
 | [Viewer.v](theories/Viewer.v) | The value-only boundary for the native viewer. |
 | [Example.v](theories/Example.v) | Executable regressions and the assumption audit. |
 
@@ -90,7 +202,7 @@ Each file below depends only on the ones above it.
 
 ```coq
 From Stdlib Require Import List.
-From Rubik Require Import Solve.
+From Rubik Require Import Search.Solve.
 Import ListNotations.
 
 Definition scrambled := run init_state [(Right, CW); (Up, CW)].
@@ -118,31 +230,31 @@ such check at all: a wrong table can make the search fail or wander, but it
 cannot make it accept a sequence that does not solve. Completeness does need
 it, and `tables1_checked` and `tables2_checked` run it.
 
-[Cubie.v](theories/Cubie.v) connects the two views of a cube. The stickers
+[Cubie.v](theories/Cube/Cubie.v) connects the two views of a cube. The stickers
 say where 54 colors sit; the solver works with 8 corner pieces and 12 edge
 pieces, each in a slot and rotated within it. `paint_cquarter` proves the two
 views agree move for move, and `paint_to_cubies` that they are inverse on any
 cube a scramble can produce.
 
-[Group.v](theories/Group.v) reads a cube as the rearrangement that produced
+[Group.v](theories/Cube/Group.v) reads a cube as the rearrangement that produced
 it, so two cubes compose. `crun_element` proves that running a sequence on any
 cube is composing that cube with the one the sequence denotes. That is what
 makes a solving method checkable: a claim about every cube a sequence might
 meet becomes a claim about one cube, which is a computation.
 
-[Parity.v](theories/Parity.v) counts a rearrangement's inversions. A quarter
+[Parity.v](theories/Cube/Parity.v) counts a rearrangement's inversions. A quarter
 turn is a four-cycle on the corners and a four-cycle on the edges, so each
 parity flips and their combination does not. `cparity_element` rules out a
 cube with exactly two pieces exchanged, which is the last thing a solving
 method has to know.
 
-[Chain.v](theories/Chain.v) and [Domino.v](theories/Domino.v) run a method
+[Chain.v](theories/Bounds/Chain.v) and [Domino.v](theories/Bounds/Domino.v) run a method
 that finishes one slot at a time, reading a table of sequences that leave the
-finished slots alone. [Solvable.v](theories/Solvable.v) assembles the two into
+finished slots alone. [Solvable.v](theories/Bounds/Solvable.v) assembles the two into
 `full_solution` and `subgroup_solution`, the bounds the two-phase search needs
 in order to answer.
 
-[Prune.v](theories/Prune.v) prunes the move space: consecutive turns of the
+[Prune.v](theories/Search/Prune.v) prunes the move space: consecutive turns of the
 same face are never tried, and adjacent opposite faces are kept in one order
 only. `normalise` there proves the pruning loses nothing, by rewriting any
 sequence into one the pruning keeps that lands in the same place and is no
@@ -190,21 +302,24 @@ only hand-written C++ in the tree is the binding headers it includes.
 
 ### How the layers are arranged
 
-[native/RaylibDefs.v](native/RaylibDefs.v) and [native/Raylib.v](native/Raylib.v)
+[native/Bindings/RaylibDefs.v](native/Bindings/RaylibDefs.v) and
+[native/Bindings/Raylib.v](native/Bindings/Raylib.v)
 are **generic raylib bindings**. They mention no cube. They declare the handle
 and geometry types, the key and button names, and one effect per raylib call,
-and they map those effects onto [native/raylib_helpers.h](native/raylib_helpers.h),
+and they map those effects onto
+[native/Bindings/raylib_helpers.h](native/Bindings/raylib_helpers.h),
 a header of thin inline wrappers. Any application could build on them, the same
 way Rocqman builds on its separate SDL2 bindings. They live in this repository
 only for convenience.
 
-[native/JobDefs.v](native/JobDefs.v) and [native/Job.v](native/Job.v) are a
+[native/Bindings/JobDefs.v](native/Bindings/JobDefs.v) and
+[native/Bindings/Job.v](native/Bindings/Job.v) are a
 second, equally generic binding: a **cancellable background job**. `job_start`
 runs any pure Rocq function off the calling thread and hands back a handle,
 `job_poll` reads its finished value at most once without ever blocking, and
 `job_cancel` abandons it. Crane's own `Monads.Par` and `Monads.Thread` do not
 fit here, because `future.get` and `join` both block, and an interactive loop
-cannot afford either. [native/background_job.hpp](native/background_job.hpp)
+cannot afford either. [native/Bindings/background_job.hpp](native/Bindings/background_job.hpp)
 implements it with one detached thread and a cell the two sides share.
 
 Solving the cube is just one use of that job. [native/App.v](native/App.v) is
@@ -278,7 +393,8 @@ cmake --build build/native -j8
 `make extract` runs `dune build native/Extract.vo` and copies the result into
 `native/generated/`. Crane is a **vendored dune directory**, so the plugin and
 its theories are built in place from the submodule and nothing is ever
-installed over your opam switch. WebAssembly is not wired up yet.
+installed over your opam switch. For the browser build see
+[Play it in a browser](#play-it-in-a-browser).
 
 `RUBIK_SMOKE=shot.png ./build/native/rubik` runs a scripted self-test: the
 same extracted loop, driven from a fixed sequence instead of a keyboard. It
@@ -321,7 +437,7 @@ proofs, or unchecked computation casts.
 
 Completeness rests on knowing that what each phase is asked for is really
 there. That comes from a second, much slower solving method, proved outright
-in [Solvable.v](theories/Solvable.v): finish one slot at a time, each step
+in [Solvable.v](theories/Bounds/Solvable.v): finish one slot at a time, each step
 reading a small table of sequences that leave the finished slots alone.
 `full_solution` gives a solution of at most 372 moves for any solvable cube,
 and `subgroup_solution` one of at most 200 using only the ten moves the second
@@ -333,8 +449,7 @@ It also rests on the six pruning tables never overestimating, and they are
 checked rather than assumed: `tables1_checked` and `tables2_checked` run the
 conditions over all 95417 coordinates the tables cover. Table indices are
 binary, so a lookup is a walk down the bits rather than arithmetic, which is
-what brings those checks within reach of the kernel. Neither theorem below
-takes a hypothesis.
+what brings those checks within reach of the kernel.
 
 ### What is not proved
 
@@ -381,54 +496,54 @@ graph inside Rocq, which is available for the
 | `solve_snapshot_complete`, `solve_request_complete` | The background job answers on every snapshot a real scramble can produce. |
 | `accepted_solution_solves` | A wrong or stale reply is never installed as a playback plan. |
 
-Nothing in the repository is built by a proved procedure: the pruning tables
-come from an unproved breadth-first search and the word tables from an
-unproved solver. Everything they have to satisfy is checked instead, by
-computing, when the modules that hold them compile. That is what makes the
-solver affordable to verify, and it is why a wrong table fails to compile
-rather than proving anything false. The build prints the assumptions of the
-principal theorems; each reports `Closed under the global context`.
+The build prints the assumptions of the principal theorems; each reports
+`Closed under the global context`.
 
 Five modules are generated in full and should never be edited by hand:
-[TurnTables.v](theories/TurnTables.v) by
+[TurnTables.v](theories/Cube/TurnTables.v) by
 [scripts/generate_moves.py](scripts/generate_moves.py),
-[CubieTables.v](theories/CubieTables.v) by
+[CubieTables.v](theories/Cube/CubieTables.v) by
 [scripts/generate_cubies.py](scripts/generate_cubies.py),
-[ParityTables.v](theories/ParityTables.v) by
+[ParityTables.v](theories/Cube/ParityTables.v) by
 [scripts/generate_parity.py](scripts/generate_parity.py), and
-[ChainTables.v](theories/ChainTables.v) with
-[DominoTables.v](theories/DominoTables.v) by
-[scripts/generate_chain.py](scripts/generate_chain.py). Run a script to
-regenerate its files; `make check-generated` fails if one of the first three
-is stale. The last two are self-checking, so they need no staleness test: a
-wrong entry fails to compile. No generator is part of the proof trust
-boundary.
+[ChainTables.v](theories/Bounds/ChainTables.v) with
+[DominoTables.v](theories/Bounds/DominoTables.v) by
+[scripts/generate_chain.py](scripts/generate_chain.py). Each is re-derived
+inside Rocq, as [How it fits together](#how-it-fits-together) sets out, so no
+generator is part of the proof trust boundary.
 
-[scripts/generate_chain.py](scripts/generate_chain.py) finds its sequences by
-solving cubes with the extracted solver, through the batch program in
-[tools/solve_tool.cpp](tools/solve_tool.cpp). Build it with `cmake --build
-build/native --target solve_tool` before running the script. Nothing it prints
-is trusted, so the several minutes it takes are a convenience, not part of the
-proof.
-[Geometry.v](theories/Geometry.v) checks the sticker tables against a separate
-geometric specification inside Rocq, and `paint_cquarter` checks the cubie
-tables against the sticker tables.
+What that leaves is staleness, which each generator tests with `--check`:
+rebuild the output from scratch and compare. `make check` runs the three fast
+ones. The fourth needs the batch solver in
+[tools/solve_tool.cpp](tools/solve_tool.cpp) and a few hundred solves, so it
+has its own target:
+
+```sh
+cmake --build build/native --target solve_tool
+opam exec -- make check-chain     # about ten minutes
+```
 
 ## Source documentation and style
 
-Every Rocq declaration has a one- or two-line Rocqdoc comment explaining its
-purpose. The source is organized into small thematic sections, with explicit
-public types, consistent proof indentation, and one branch per line for
-multiline matches. Generated move tables follow the same style.
+Every Rocq declaration, generated ones included, has a one- or two-line
+Rocqdoc comment saying what it is for. Files are organized into small thematic
+sections, with explicit public types, consistent proof indentation, and one
+branch per line for multiline matches. Keep comments on intuition,
+assumptions, or guarantees rather than on what the statement already says.
 
 ```sh
-opam exec -- make html       # Browse the coqdoc output it points at
-python3 scripts/generate_moves.py --check
+opam exec -- make html       # Browse the Rocqdoc output it points at
+opam exec -- make check      # Proofs, kernel recheck, generated-table check
+opam exec -- make check-chain # The slow generator, about ten minutes
 ```
 
-Keep comments focused on intuition, assumptions, or guarantees. Update the
-move generator when changing generated code, then run `make check` to verify
-both reproducibility and the proofs.
+The generators under [scripts/](scripts) own the five generated modules, and
+nothing else should edit them. Each takes `--check`, which rebuilds its output
+from scratch and fails if the checked-in file differs, so changing a generator
+means rerunning it. Three of them are fast enough to live in `make check`; the
+fourth has its own target because it calls the solver a few hundred times.
+[cubelib.py](scripts/cubelib.py) is the shared cube model the last two read
+the move tables through, so no generator carries its own copy.
 
 ## Provenance
 
@@ -440,7 +555,12 @@ state reaches the solved cube, which is what `solve_two_phase_sound` still
 says.
 
 The cube and the method have changed. A 2×2×2 has few enough states to settle
-by computing its whole graph inside Rocq, which is how his solver gets a total
-function and an 11-move bound. A 3×3×3 does not, so the model grew to 54
-stickers with a piece model beside it, and the solver became Kociemba's two
-phases. [paper.pdf](paper.pdf) describes the 2×2×2 algorithm, not this one.
+by computing its whole graph inside Rocq, which is how his solver gets both
+totality and an 11-move bound at once. A 3×3×3 does not, so the model grew to
+54 stickers with a piece model beside it, the solver became Kociemba's two
+phases, and totality had to be argued separately from length.
+[paper.pdf](paper.pdf) describes the 2×2×2 algorithm, not this one.
+
+## License
+
+MIT, as in [LICENSE](LICENSE).

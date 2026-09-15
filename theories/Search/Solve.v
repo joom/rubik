@@ -1,5 +1,5 @@
-From Stdlib Require Import Arith List Lia PArith.
-From Rubik Require Export Phase2 Solvable.
+From Stdlib Require Import Arith List Lia.
+From Rubik Require Export Search.Phase2 Bounds.Solvable.
 Import ListNotations.
 
 (** * Solving a cube
@@ -66,6 +66,7 @@ Qed.
 Definition phase1_reach (lim1 : nat) : Prop :=
   forall c, csolvable c -> exists q, in_subgroup (crun c q) /\ length q <= lim1.
 
+(** And how far the second phase may have to look, using only allowed moves. *)
 Definition phase2_reach (lim2 : nat) : Prop :=
   forall c, csolvable c -> in_subgroup c ->
     exists q, Forall (fun m => phase2_move m = true) q /\

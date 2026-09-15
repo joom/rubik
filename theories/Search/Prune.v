@@ -1,5 +1,5 @@
 From Stdlib Require Import Arith List Lia.
-From Rubik Require Import BasicRubik.
+From Rubik Require Import Cube.BasicRubik.
 Import ListNotations.
 
 (** * Pruning the move space
@@ -139,6 +139,7 @@ Fixpoint canonicalb (prev : option move) (p : list move) : bool :=
   | m :: q => allowed prev m && canonicalb (Some m) q
   end.
 
+(** The two views agree. *)
 Lemma canonicalb_spec prev p : canonicalb prev p = true <-> canonical prev p.
 Proof.
   revert prev; induction p as [| m q IH]; intro prev; simpl; [tauto |].
@@ -167,8 +168,10 @@ Fixpoint weight_from (i : nat) (p : list move) : nat :=
   | m :: q => i * face_rank (fst m) + weight_from (S i) q
   end.
 
+(** The weight of a whole path, counted from the front. *)
 Definition weight (p : list move) : nat := weight_from 0 p.
 
+(** Weight adds over a join, with the second part counted from further along. *)
 Lemma weight_from_app i a c :
   weight_from i (a ++ c) = weight_from i a + weight_from (i + length a) c.
 Proof.
@@ -202,6 +205,7 @@ Hypothesis merge : forall f t1 t2,
 Hypothesis comm : forall f g t1 t2, opposite f g = true ->
   forall a, act (f, t1) (act (g, t2) a) = act (g, t2) (act (f, t1) a).
 
+(** Running a join is running each part in turn. *)
 Lemma act_run_app a p q : act_run a (p ++ q) = act_run (act_run a p) q.
 Proof. unfold act_run; apply fold_left_app. Qed.
 

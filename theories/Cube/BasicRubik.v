@@ -1,5 +1,5 @@
 From Stdlib Require Import Bool List.
-From Rubik Require Export Sticker TurnTables.
+From Rubik Require Export Cube.Sticker Cube.TurnTables.
 Import ListNotations.
 
 (** * Turning the cube
@@ -114,6 +114,7 @@ Proof. destruct f, g; simpl; congruence. Qed.
 Definition opposite (f g : face) : bool :=
   Nat.eqb (face_rank f + 3) (face_rank g) || Nat.eqb (face_rank g + 3) (face_rank f).
 
+(** Being on one axis does not depend on which face is named first. *)
 Lemma opposite_sym f g : opposite f g = opposite g f.
 Proof. unfold opposite; apply Bool.orb_comm. Qed.
 

@@ -3,7 +3,7 @@
    sequence uses only moves the second phase may make. *)
 
 From Stdlib Require Import Arith List Lia.
-From Rubik Require Export Domino.
+From Rubik Require Export Bounds.Domino.
 Import ListNotations.
 
 (** * Tables for solving inside the subgroup
@@ -12,7 +12,8 @@ Import ListNotations.
     slice. The eighth corner, the eighth outer edge and the last two slice
     edges have no table; what they must hold is forced. *)
 
-Definition dctab_0 : ctable :=
+(** Finishing the URF slot, with nothing else finished. *)
+Definition domino_urf_table : ctable :=
   [((URF, T0), []);
    ((UFL, T0), [(Front, Half); (Down, CCW); (Front, Half); (Right, Half); (Down, CCW); (Right, Half); (Down, CW); (Right, Half); (Up, CCW); (Back, Half); (Down, Half); (Back, Half); (Right, Half); (Up, Half); (Front, Half); (Up, CCW)]);
    ((ULB, T0), [(Right, Half); (Up, Half); (Front, Half); (Up, CCW); (Right, Half); (Front, Half); (Up, Half); (Left, Half); (Back, Half); (Down, CCW); (Back, Half); (Left, Half); (Up, Half); (Right, Half); (Up, CCW)]);
@@ -22,7 +23,8 @@ Definition dctab_0 : ctable :=
    ((DBL, T0), [(Down, CCW); (Back, Half); (Up, CW); (Right, Half); (Front, Half); (Up, Half); (Back, Half); (Up, CW); (Back, Half); (Right, Half); (Up, Half); (Left, Half); (Up, CCW); (Front, Half); (Right, Half); (Up, CCW)]);
    ((DRB, T0), [(Front, Half); (Down, CCW); (Front, Half); (Left, Half); (Up, Half); (Back, Half); (Right, Half); (Up, CCW); (Back, Half); (Left, Half); (Up, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, Half)])].
 
-Definition dctab_1 : ctable :=
+(** Finishing the UFL slot, with 1 corners already finished. *)
+Definition domino_ufl_table : ctable :=
   [((UFL, T0), []);
    ((ULB, T0), [(Left, Half); (Down, CCW); (Back, Half); (Down, CW); (Left, Half); (Front, Half); (Up, CW); (Front, Half); (Up, CCW); (Front, Half); (Right, Half); (Up, Half); (Right, Half); (Up, Half); (Right, Half); (Up, CCW)]);
    ((UBR, T0), [(Front, Half); (Right, Half); (Down, Half); (Back, Half); (Left, Half); (Down, CCW); (Back, Half); (Right, Half); (Up, Half); (Right, Half); (Down, CCW); (Right, Half); (Up, Half); (Front, Half); (Up, CCW)]);
@@ -31,7 +33,8 @@ Definition dctab_1 : ctable :=
    ((DBL, T0), [(Right, Half); (Back, Half); (Down, CW); (Left, Half); (Back, Half); (Down, Half); (Right, Half); (Front, Half); (Down, CCW); (Front, Half); (Down, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, Half)]);
    ((DRB, T0), [(Up, CCW); (Front, Half); (Down, CCW); (Front, Half); (Left, Half); (Up, Half); (Back, Half); (Right, Half); (Up, CCW); (Back, Half); (Left, Half); (Up, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, CCW)])].
 
-Definition dctab_2 : ctable :=
+(** Finishing the ULB slot, with 2 corners already finished. *)
+Definition domino_ulb_table : ctable :=
   [((ULB, T0), []);
    ((UBR, T0), [(Left, Half); (Down, Half); (Right, Half); (Up, Half); (Right, Half); (Back, Half); (Up, CCW); (Back, Half); (Down, CW); (Left, Half); (Front, Half); (Down, CW); (Right, Half); (Up, CCW); (Right, Half); (Up, CCW)]);
    ((DFR, T0), [(Up, CCW); (Front, Half); (Right, Half); (Up, CCW); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Up, CCW); (Right, Half); (Up, Half); (Front, Half); (Up, CCW); (Front, Half); (Right, Half); (Up, CCW)]);
@@ -39,29 +42,34 @@ Definition dctab_2 : ctable :=
    ((DBL, T0), [(Down, CCW); (Front, Half); (Right, Half); (Down, CW); (Back, Half); (Right, Half); (Up, Half); (Back, Half); (Right, Half); (Up, CCW); (Back, Half); (Up, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, CCW)]);
    ((DRB, T0), [(Back, Half); (Left, Half); (Down, CW); (Left, Half); (Back, Half); (Up, Half); (Front, Half); (Up, CCW); (Right, Half); (Up, Half); (Front, Half); (Up, CCW); (Front, Half); (Right, Half); (Up, Half)])].
 
-Definition dctab_3 : ctable :=
+(** Finishing the UBR slot, with 3 corners already finished. *)
+Definition domino_ubr_table : ctable :=
   [((UBR, T0), []);
    ((DFR, T0), [(Left, Half); (Back, Half); (Down, CW); (Back, Half); (Down, Half); (Back, Half); (Left, Half); (Up, CCW); (Left, Half); (Down, Half); (Left, Half); (Front, Half); (Up, CCW); (Right, Half); (Up, Half)]);
    ((DLF, T0), [(Down, CCW); (Left, Half); (Down, CCW); (Left, Half); (Down, Half); (Left, Half); (Back, Half); (Down, CW); (Back, Half); (Left, Half); (Up, Half); (Front, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, CCW)]);
    ((DBL, T0), [(Right, Half); (Down, CW); (Back, Half); (Left, Half); (Down, Half); (Right, Half); (Down, CW); (Right, Half); (Back, Half); (Up, Half); (Back, Half); (Up, CCW); (Back, Half); (Right, Half); (Up, Half)]);
    ((DRB, T0), [(Right, Half); (Back, Half); (Down, CW); (Left, Half); (Down, CCW); (Left, Half); (Down, CW); (Front, Half); (Down, CCW); (Left, Half); (Back, Half); (Up, CCW); (Right, Half); (Up, CW); (Right, Half); (Up, CCW)])].
 
-Definition dctab_4 : ctable :=
+(** Finishing the DFR slot, with 4 corners already finished. *)
+Definition domino_dfr_table : ctable :=
   [((DFR, T0), []);
    ((DLF, T0), [(Front, Half); (Up, CCW); (Front, Half); (Left, Half); (Down, CCW); (Back, Half); (Down, CW); (Left, Half); (Up, CCW); (Right, Half); (Up, Half); (Right, Half); (Front, Half); (Up, Half); (Right, Half); (Up, CCW)]);
    ((DBL, T0), [(Right, Half); (Back, Half); (Up, Half); (Front, Half); (Up, CW); (Left, Half); (Back, Half); (Up, Half); (Front, Half); (Down, CCW); (Front, Half); (Right, Half); (Down, Half); (Right, Half); (Up, CCW)]);
    ((DRB, T0), [(Front, Half); (Up, Half); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Down, CCW); (Right, Half); (Down, CW); (Back, Half); (Up, CCW); (Back, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, CCW)])].
 
-Definition dctab_5 : ctable :=
+(** Finishing the DLF slot, with 5 corners already finished. *)
+Definition domino_dlf_table : ctable :=
   [((DLF, T0), []);
    ((DBL, T0), [(Left, Half); (Down, CCW); (Back, Half); (Right, Half); (Up, CCW); (Right, Half); (Down, CW); (Back, Half); (Up, CCW); (Front, Half); (Up, Half); (Front, Half); (Left, Half); (Up, Half); (Front, Half); (Up, CCW)]);
    ((DRB, T0), [(Right, Half); (Front, Half); (Up, Half); (Front, Half); (Up, CCW); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Up, CW); (Front, Half); (Right, Half); (Up, Half); (Right, Half); (Up, CCW)])].
 
-Definition dctab_6 : ctable :=
+(** Finishing the DBL slot, with 6 corners already finished. *)
+Definition domino_dbl_table : ctable :=
   [((DBL, T0), []);
    ((DRB, T0), [(Back, Half); (Up, CW); (Right, Half); (Down, CCW); (Left, Half); (Down, Half); (Left, Half); (Front, Half); (Up, Half); (Right, Half); (Up, CCW); (Left, Half); (Up, CCW); (Front, Half); (Right, Half); (Up, CCW)])].
 
-Definition detab_0 : etable :=
+(** Finishing the UR slot, with all eight corners already finished. *)
+Definition domino_ur_table : etable :=
   [((UR, F0), []);
    ((UF, F0), [(Front, Half); (Down, CCW); (Right, Half); (Front, Half); (Down, Half); (Front, Half); (Right, Half); (Down, Half); (Front, Half); (Down, CCW); (Front, Half)]);
    ((UL, F0), [(Front, Half); (Up, Half); (Front, Half); (Up, Half); (Front, Half); (Up, Half)]);
@@ -71,7 +79,8 @@ Definition detab_0 : etable :=
    ((DL, F0), [(Right, Half); (Back, Half); (Down, Half); (Back, Half); (Right, Half); (Up, Half); (Front, Half); (Up, Half)]);
    ((DB, F0), [(Down, CCW); (Front, Half); (Down, Half); (Right, Half); (Front, Half); (Down, Half); (Front, Half); (Right, Half); (Down, CCW)])].
 
-Definition detab_1 : etable :=
+(** Finishing the UF slot, with all eight corners and 1 edges already finished. *)
+Definition domino_uf_table : etable :=
   [((UF, F0), []);
    ((UL, F0), [(Front, Half); (Down, CCW); (Back, Half); (Up, Half); (Left, Half); (Back, Half); (Down, Half); (Front, Half); (Right, Half); (Down, CCW); (Front, Half)]);
    ((UB, F0), [(Up, CCW); (Front, Half); (Up, Half); (Front, Half); (Up, Half); (Front, Half); (Up, CCW)]);
@@ -80,7 +89,8 @@ Definition detab_1 : etable :=
    ((DL, F0), [(Up, CCW); (Right, Half); (Back, Half); (Down, Half); (Back, Half); (Right, Half); (Up, Half); (Front, Half); (Up, CCW)]);
    ((DB, F0), [(Front, Half); (Down, CCW); (Front, Half); (Down, Half); (Front, Half); (Down, Half); (Front, Half); (Down, CCW); (Front, Half)])].
 
-Definition detab_2 : etable :=
+(** Finishing the UL slot, with all eight corners and 2 edges already finished. *)
+Definition domino_ul_table : etable :=
   [((UL, F0), []);
    ((UB, F0), [(Back, Half); (Down, CCW); (Right, Half); (Back, Half); (Up, Half); (Back, Half); (Right, Half); (Down, Half); (Front, Half); (Down, CCW); (Back, Half)]);
    ((DR, F0), [(Right, Half); (Front, Half); (Up, Half); (Front, Half); (Right, Half); (Up, Half); (Front, Half); (Up, Half)]);
@@ -88,76 +98,93 @@ Definition detab_2 : etable :=
    ((DL, F0), [(Back, Half); (Down, Half); (Left, Half); (Back, Half); (Up, Half); (Front, Half); (Right, Half); (Up, Half)]);
    ((DB, F0), [(Down, CCW); (Right, Half); (Back, Half); (Up, Half); (Back, Half); (Right, Half); (Down, Half); (Front, Half); (Down, CCW)])].
 
-Definition detab_3 : etable :=
+(** Finishing the UB slot, with all eight corners and 3 edges already finished. *)
+Definition domino_ub_table : etable :=
   [((UB, F0), []);
    ((DR, F0), [(Up, CCW); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Right, Half); (Up, Half); (Front, Half); (Up, CCW)]);
    ((DF, F0), [(Front, Half); (Up, CCW); (Front, Half); (Up, Half); (Front, Half); (Up, Half); (Front, Half); (Up, CCW); (Front, Half)]);
    ((DL, F0), [(Up, CCW); (Back, Half); (Down, Half); (Left, Half); (Back, Half); (Up, Half); (Front, Half); (Right, Half); (Up, CCW)]);
    ((DB, F0), [(Up, CCW); (Down, CCW); (Left, Half); (Back, Half); (Up, CCW); (Down, CCW); (Left, Half); (Front, Half); (Up, Half); (Right, Half)])].
 
-Definition detab_4 : etable :=
+(** Finishing the DR slot, with all eight corners and 4 edges already finished. *)
+Definition domino_dr_table : etable :=
   [((DR, F0), []);
    ((DF, F0), [(Front, Half); (Up, CCW); (Front, Half); (Up, Half); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Right, Half); (Up, CCW); (Front, Half)]);
    ((DL, F0), [(Back, Half); (Down, Half); (Back, Half); (Up, Half); (Front, Half); (Up, Half)]);
    ((DB, F0), [(Back, Half); (Up, CCW); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Right, Half); (Up, Half); (Front, Half); (Up, CCW); (Back, Half)])].
 
-Definition detab_5 : etable :=
+(** Finishing the DF slot, with all eight corners and 5 edges already finished. *)
+Definition domino_df_table : etable :=
   [((DF, F0), []);
    ((DL, F0), [(Front, Half); (Up, CCW); (Right, Half); (Back, Half); (Down, Half); (Back, Half); (Right, Half); (Up, Half); (Front, Half); (Up, CCW); (Front, Half)]);
    ((DB, F0), [(Down, CCW); (Front, Half); (Down, Half); (Front, Half); (Down, Half); (Front, Half); (Down, CCW)])].
 
-Definition detab_6 : etable :=
+(** Finishing the DL slot, with all eight corners and 6 edges already finished. *)
+Definition domino_dl_table : etable :=
   [((DL, F0), []);
    ((DB, F0), [(Back, Half); (Up, CCW); (Back, Half); (Down, Half); (Left, Half); (Back, Half); (Up, Half); (Front, Half); (Right, Half); (Up, CCW); (Back, Half)])].
 
-Definition detab_8 : etable :=
+(** Finishing the FR slot, with all eight corners and 8 edges already finished. *)
+Definition domino_fr_table : etable :=
   [((FR, F0), []);
    ((FL, F0), [(Down, CCW); (Left, Half); (Up, CCW); (Down, CW); (Front, Half); (Up, CW)]);
    ((BL, F0), [(Down, CW); (Front, Half); (Up, CW); (Down, CCW); (Left, Half); (Up, CCW)]);
    ((BR, F0), [(Down, CW); (Right, Half); (Up, CW); (Down, CCW); (Front, Half); (Up, CCW)])].
 
-Definition detab_9 : etable :=
+(** Finishing the FL slot, with all eight corners and 9 edges already finished. *)
+Definition domino_fl_table : etable :=
   [((FL, F0), []);
    ((BL, F0), [(Down, CCW); (Back, Half); (Up, CCW); (Down, CW); (Left, Half); (Up, CW)]);
    ((BR, F0), [(Down, CW); (Left, Half); (Up, CW); (Down, CCW); (Back, Half); (Up, CCW)])].
 
 (** The stages in the order they run. *)
-Definition dcorner_stages : list stage := [Cstage URF dctab_0 16; Cstage UFL dctab_1 16; Cstage ULB dctab_2 16; Cstage UBR dctab_3 16; Cstage DFR dctab_4 16; Cstage DLF dctab_5 16; Cstage DBL dctab_6 16].
-Definition dud_stages : list stage := [Estage UR detab_0 11; Estage UF detab_1 11; Estage UL detab_2 11; Estage UB detab_3 10; Estage DR detab_4 11; Estage DF detab_5 11; Estage DL detab_6 11].
-Definition dslice_stages : list stage := [Estage FR detab_8 6; Estage FL detab_9 6].
+Definition dcorner_stages : list stage := [Cstage URF domino_urf_table 16; Cstage UFL domino_ufl_table 16; Cstage ULB domino_ulb_table 16; Cstage UBR domino_ubr_table 16; Cstage DFR domino_dfr_table 16; Cstage DLF domino_dlf_table 16; Cstage DBL domino_dbl_table 16].
+(** The outer edge stages. *)
+Definition dud_stages : list stage := [Estage UR domino_ur_table 11; Estage UF domino_uf_table 11; Estage UL domino_ul_table 11; Estage UB domino_ub_table 10; Estage DR domino_dr_table 11; Estage DF domino_df_table 11; Estage DL domino_dl_table 11].
+(** And the slice stages. *)
+Definition dslice_stages : list stage := [Estage FR domino_fr_table 6; Estage FL domino_fl_table 6].
 
 (** The eight outer edge slots, once they are all finished. *)
 Definition ud_done : list edge := [DB; DL; DF; DR; UB; UL; UF; UR].
 
-Lemma dcorner_stages_ok : chain2_ok [] [] dcorner_stages = true.
+(** The corner stages check out. *)
+Lemma dcorner_stages_ok : chain_ok restricted [] [] dcorner_stages = true.
 Proof. vm_compute; reflexivity. Qed.
 
+(** The corner slots they finish, newest first. *)
 Lemma dcorner_stages_slots :
   stagesc dcorner_stages = [DBL; DLF; DFR; UBR; ULB; UFL; URF].
 Proof. vm_compute; reflexivity. Qed.
 
-Lemma dud_stages_ok : chain2_ok all_corner_slots [] dud_stages = true.
+(** The outer edge stages check out, given the corners are finished. *)
+Lemma dud_stages_ok : chain_ok restricted all_corner_slots [] dud_stages = true.
 Proof. vm_compute; reflexivity. Qed.
 
+(** The outer edge slots they finish, and no corner slot. *)
 Lemma dud_stages_slots : stagese dud_stages = [DL; DF; DR; UB; UL; UF; UR].
 Proof. vm_compute; reflexivity. Qed.
 
+(** They finish no corner slot. *)
 Lemma dud_stages_corners : stagesc dud_stages = [].
 Proof. vm_compute; reflexivity. Qed.
 
-Lemma dslice_stages_ok : chain2_ok all_corner_slots ud_done dslice_stages = true.
+(** And the slice stages, given the outer edges are finished. *)
+Lemma dslice_stages_ok : chain_ok restricted all_corner_slots ud_done dslice_stages = true.
 Proof. vm_compute; reflexivity. Qed.
 
+(** The slice slots they finish, and no corner slot. *)
 Lemma dslice_stages_slots :
   stagese dslice_stages = [FL; FR].
 Proof. vm_compute; reflexivity. Qed.
 
+(** They finish no corner slot either. *)
 Lemma dslice_stages_corners : stagesc dslice_stages = [].
 Proof. vm_compute; reflexivity. Qed.
 
 (** The longest answer the tables allow, added up over the stages. *)
 Definition domino_bound : nat := 200.
 
+(** Which is what the stages add up to. *)
 Lemma domino_bound_ok :
   chain_bound dslice_stages + (chain_bound dud_stages + chain_bound dcorner_stages)
   = domino_bound.

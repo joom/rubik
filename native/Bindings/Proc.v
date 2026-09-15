@@ -5,7 +5,7 @@
 
 From Crane Require Import Mapping.Std Monads.ITree.
 From Crane Require Extraction.
-From Rubik Require Export native.ProcDefs.
+From Rubik Require Export Native.Bindings.ProcDefs.
 
 Crane Extract Inductive procE => ""
   [ "rl_getenv(%a0)" "rl_exit_now(%a0)" ]

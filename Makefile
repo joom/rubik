@@ -5,10 +5,10 @@ DUNE ?= dune
 ROCQCHK ?= rocqchk
 BUILD := _build/default
 GENERATED := native/generated
-MODULES := Sticker TurnTables BasicRubik Geometry CubieDefs CubieTables Cubie Group Parity ParityTables Subgroup Invariant Prune Chain ChainTables Domino DominoTables Solvable Admissible Tables Phase1 Phase2 Solve Viewer Example
+MODULES := Cube.Sticker Cube.TurnTables Cube.BasicRubik Cube.Geometry Cube.CubieDefs Cube.CubieTables Cube.Cubie Cube.Group Cube.Parity Cube.ParityTables Cube.Subgroup Cube.Invariant Bounds.Chain Bounds.ChainTables Bounds.Domino Bounds.DominoTables Bounds.Solvable Search.Prune Search.Admissible Search.Tables Search.Phase1 Search.Phase2 Search.Solve Viewer Example
 
 .DEFAULT_GOAL := all
-.PHONY: all extract check check-generated tests html install clean web
+.PHONY: all extract check check-generated check-chain tests html install clean web
 
 # Build and audit the proofs. Needs no C++ toolchain and no Crane.
 all:
@@ -23,10 +23,17 @@ extract:
 	@mkdir -p $(GENERATED)
 	cp $(BUILD)/native/rubik.h $(BUILD)/native/rubik.cpp $(GENERATED)/
 
+# The three fast generators: each rebuilds its file from scratch and compares.
 check-generated:
 	python3 scripts/generate_moves.py --check
 	python3 scripts/generate_cubies.py --check
 	python3 scripts/generate_parity.py --check
+
+# The fourth one, kept out of "check" because it solves several hundred cubes
+# and takes about ten minutes. Needs the batch solver:
+#   cmake --build build/native --target solve_tool
+check-chain:
+	python3 scripts/generate_chain.py --check
 
 # Recheck the compiled proofs with the kernel, independently of the build.
 check: all check-generated
@@ -51,7 +58,7 @@ install:
 EMXX ?= em++
 RAYLIB_SRC ?= build/native/_deps/raylib-src/src
 WEB_OBJ := _build/web
-WEB_INC := -I$(GENERATED) -Inative -Icrane/theories/cpp -I$(RAYLIB_SRC)
+WEB_INC := -I$(GENERATED) -Inative -Inative/Bindings -Icrane/theories/cpp -I$(RAYLIB_SRC)
 WEB_FLAGS := -std=c++23 -fbracket-depth=1024 -Os -sUSE_GLFW=3
 WEB_LINK := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=0 \
   -sSTACK_SIZE=4MB -sINITIAL_MEMORY=256MB \
@@ -76,6 +83,8 @@ web: extract
 	$(EMXX) $(WEB_OBJ)/rubik.o $(WEB_OBJ)/web_main.o $(WEB_OBJ)/libraylib.a \
 	  $(WEB_LINK) -Os -o docs/rubik.js
 
+# dune's tree holds the WebAssembly objects too. The CMake tree under build/
+# is yours to remove.
 clean:
 	$(DUNE) clean
 	rm -rf $(GENERATED)

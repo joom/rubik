@@ -27,23 +27,24 @@ Fixpoint cross (a b : list nat) : nat :=
 (** Whether the number of inversions is odd. *)
 Definition parity (l : list nat) : bool := Nat.odd (inversions l).
 
+(** Counting over a join is counting over each part. *)
 Lemma below_app x a b : below x (a ++ b) = below x a + below x b.
 Proof. induction a as [| y a IH]; simpl; lia. Qed.
 
+(** The count does not care how the list is ordered. *)
 Lemma below_perm x a b : Permutation a b -> below x a = below x b.
 Proof.
   intro H; induction H; simpl; lia.
 Qed.
 
-Lemma cross_app a b c : cross (a ++ b) c = cross a c + cross b c.
-Proof. induction a as [| y a IH]; simpl; lia. Qed.
-
+(** Nor does the straddling count care how the second list is ordered. *)
 Lemma cross_perm_r a b b' : Permutation b b' -> cross a b = cross a b'.
 Proof.
   intro H; induction a as [| x a IH]; simpl; [reflexivity |].
   rewrite (below_perm x b b' H), IH; reflexivity.
 Qed.
 
+(** Inversions of a join: those inside each part, plus those that straddle. *)
 Lemma inversions_app a b :
   inversions (a ++ b) = inversions a + cross a b + inversions b.
 Proof.

@@ -1,4 +1,4 @@
-name: Docker CI
+name: Proofs
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - '**'
 
 jobs:
-  build:
+  check:
     # the OS must be GNU/Linux to be able to use the docker-coq-action
     runs-on: ubuntu-latest
     strategy:

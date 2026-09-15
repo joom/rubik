@@ -1,5 +1,5 @@
-From Stdlib Require Import Arith List Lia PArith Permutation.
-From Rubik Require Export Phase1.
+From Stdlib Require Import Arith List Lia Permutation.
+From Rubik Require Export Search.Phase1.
 Import ListNotations.
 
 (** * The second phase
@@ -159,6 +159,7 @@ Proof.
     repeat (destruct (edge_eq_dec _ x)); lia.
 Qed.
 
+(** and the slice edges within the slice. *)
 Lemma slice_pieces_perm m c :
   phase2_move m = true -> Permutation (slice_pieces c) (slice_pieces (cturn m c)).
 Proof.
@@ -179,6 +180,7 @@ Proof.
   apply perm_trans with (corner_pieces (cturn m c)); [apply corner_pieces_perm | apply IH].
 Qed.
 
+(** The same for the outer edges, *)
 Lemma ud_pieces_crun_perm c q :
   Forall (fun m => phase2_move m = true) q ->
   Permutation (ud_pieces c) (ud_pieces (crun c q)).
@@ -188,6 +190,7 @@ Proof.
     [apply ud_pieces_perm; auto | apply IH; auto].
 Qed.
 
+(** and for the slice edges. *)
 Lemma slice_pieces_crun_perm c q :
   Forall (fun m => phase2_move m = true) q ->
   Permutation (slice_pieces c) (slice_pieces (crun c q)).
@@ -212,6 +215,7 @@ Proof.
       exists m; split; [reflexivity | apply phase2_moves_complete; auto].
 Qed.
 
+(** The same for the outer edge placement, *)
 Lemma udperm_reaches c q :
   Forall (fun m => phase2_move m = true) q -> crun c q = csolved ->
   reaches udperm_step udperm_goal (length q) (ud_pieces c).
@@ -225,6 +229,7 @@ Proof.
       exists m; split; [reflexivity | apply phase2_moves_complete; auto].
 Qed.
 
+(** and for the slice placement. *)
 Lemma sliceperm_reaches c q :
   Forall (fun m => phase2_move m = true) q -> crun c q = csolved ->
   reaches sliceperm_step sliceperm_goal (length q) (slice_pieces c).
@@ -244,10 +249,12 @@ Lemma cornerperm_lookup c :
   = cornerperm_estimate (corner_pieces c).
 Proof. unfold cornerperm_estimate; rewrite cornerperm_index_key; reflexivity. Qed.
 
+(** The same for the outer edge table, *)
 Lemma udperm_lookup c :
   table_get udperm_table (udperm_index c) = udperm_estimate (ud_pieces c).
 Proof. unfold udperm_estimate; rewrite udperm_index_key; reflexivity. Qed.
 
+(** and for the slice table. *)
 Lemma sliceperm_lookup c :
   table_get sliceperm_table (sliceperm_index c)
   = sliceperm_estimate (slice_pieces c).
@@ -260,6 +267,7 @@ Definition tables2_ok : Prop :=
   consistentb udperm_step udperm_goal udperm_dom udperm_estimate = true /\
   consistentb sliceperm_step sliceperm_goal sliceperm_dom sliceperm_estimate = true.
 
+(** The kernel runs those three checks too. *)
 Theorem tables2_checked : tables2_ok.
 Proof.
   split; [apply cornerperm_checked

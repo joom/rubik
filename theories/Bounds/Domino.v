@@ -1,5 +1,5 @@
 From Stdlib Require Import Arith List Lia.
-From Rubik Require Export Chain Subgroup.
+From Rubik Require Export Bounds.Chain Cube.Subgroup.
 Import ListNotations.
 
 (** * Solving inside the subgroup
@@ -25,6 +25,7 @@ Proof.
   apply IH; [assumption | apply phase2_move_keeps_subgroup; assumption].
 Qed.
 
+(** Reading that test back as a fact about every move in the sequence. *)
 Lemma phase2_word_Forall w :
   phase2_word w = true -> Forall (fun m => phase2_move m = true) w.
 Proof.
@@ -32,6 +33,7 @@ Proof.
     rewrite forallb_forall in H; apply H, Hm.
 Qed.
 
+(** So the cube such a sequence denotes is itself in the subgroup. *)
 Lemma phase2_word_subgroup w : phase2_word w = true -> in_subgroup (element w).
 Proof.
   intro H; apply crun_subgroup;
@@ -47,6 +49,7 @@ Proof.
     destruct X; cbn [getc]; assumption.
 Qed.
 
+(** nothing is flipped, *)
 Lemma subgroup_flip d Y : in_subgroup d -> snd (gete d Y) = F0.
 Proof.
   intros [[_ Hf] _]; unfold flips, edge_slots in Hf;
@@ -54,6 +57,7 @@ Proof.
     destruct Y; cbn [gete]; assumption.
 Qed.
 
+(** and a slot holds a slice edge exactly when it is a slice slot. *)
 Lemma subgroup_slice d Y : in_subgroup d -> is_slice (fst (gete d Y)) = is_slice Y.
 Proof.
   intros [_ Hs]; unfold sliced, slice_mask, edge_pieces, edge_slots in Hs;
@@ -66,9 +70,11 @@ Qed.
 Lemma corner_slots_map c : corner_slots c = map (getc c) all_corner_slots.
 Proof. destruct c; reflexivity. Qed.
 
+(** and the same for its edge slots. *)
 Lemma edge_slots_map c : edge_slots c = map (gete c) all_edge_slots.
 Proof. destruct c; reflexivity. Qed.
 
+(** So the subgroup conditions can be checked one slot at a time. *)
 Lemma in_subgroup_intro c :
   (forall X, snd (getc c X) = T0) ->
   (forall Y, snd (gete c Y) = F0) ->
@@ -116,6 +122,7 @@ Definition cdomain0 (cs : list corner) : list cslot :=
   filter (fun v => negb (corner_inb (fst v) cs))
          (map (fun X => (X, T0)) all_corner_slots).
 
+(** An unturned reading whose piece is unfinished is one of those, *)
 Lemma in_cdomain0 v cs :
   snd v = T0 -> ~ In (fst v) cs -> In v (cdomain0 cs).
 Proof.
@@ -126,15 +133,6 @@ Proof.
   destruct (fst v); simpl; tauto.
 Qed.
 
-Lemma ccovers_of0 t cs X d :
-  forallb (ccovers t) (cdomain0 cs) = true ->
-  in_subgroup d -> wellformed d -> solvedc d cs -> ~ In X cs ->
-  ccovers t (getc d X) = true.
-Proof.
-  intros Hall Hsub Hw Hs HX; rewrite forallb_forall in Hall.
-  apply Hall, in_cdomain0; [apply subgroup_twist, Hsub | apply corner_fresh; auto].
-Qed.
-
 (** An edge slot shows only pieces of its own kind: inside the subgroup the
     slice edges stay in the slice and the others stay out of it. *)
 Definition edomain2 (es : list edge) (Y : edge) : list eslot :=
@@ -142,6 +140,7 @@ Definition edomain2 (es : list edge) (Y : edge) : list eslot :=
                         (Bool.eqb (is_slice (fst v)) (is_slice Y)))
          (map (fun Z => (Z, F0)) all_edge_slots).
 
+(** and an unflipped reading of the right kind is one of these. *)
 Lemma in_edomain2 v es Y :
   snd v = F0 -> ~ In (fst v) es -> is_slice (fst v) = is_slice Y ->
   In v (edomain2 es Y).
@@ -154,93 +153,43 @@ Proof.
     destruct (is_slice Y); reflexivity.
 Qed.
 
-Lemma ecovers_of2 t es Y d :
-  forallb (ecovers t) (edomain2 es Y) = true ->
-  in_subgroup d -> wellformed d -> solvede d es -> ~ In Y es ->
-  ecovers t (gete d Y) = true.
+(** * The restricted run
+
+    The same driver, told to use only allowed sequences, to expect only
+    unturned readings, and to keep the cube inside the subgroup. *)
+
+Lemma phase2_word_nil : phase2_word [] = true.
+Proof. reflexivity. Qed.
+
+(** and joining two allowed sequences gives another. *)
+Lemma phase2_word_app w u :
+  phase2_word (w ++ u) = andb (phase2_word w) (phase2_word u).
+Proof. unfold phase2_word; apply forallb_app. Qed.
+
+(** The policy the restricted run follows. *)
+Definition restricted : policy.
 Proof.
-  intros Hall Hsub Hw Hs HY; rewrite forallb_forall in Hall.
-  apply Hall, in_edomain2;
-    [apply subgroup_flip, Hsub | apply edge_fresh; auto
-    | apply subgroup_slice, Hsub].
-Qed.
+  refine (Policy phase2_word cdomain0 edomain2
+                 (fun d => generated d /\ in_subgroup d)
+                 phase2_word_nil phase2_word_app (fun d H => proj1 H) _ _ _).
+  - intros w d Hw [Hg Hs]; split;
+      [apply generated_step, Hg
+      | apply subgroup_ccompose; [apply phase2_word_subgroup, Hw | exact Hs]].
+  - intros d cs X [Hg Hs] Hc HX;
+      apply in_cdomain0;
+      [apply subgroup_twist, Hs
+      | apply corner_fresh; auto using generated_wellformed].
+  - intros d es Y [Hg Hs] He HY;
+      apply in_edomain2;
+      [apply subgroup_flip, Hs
+      | apply edge_fresh; auto using generated_wellformed
+      | apply subgroup_slice, Hs].
+Defined.
 
-(** * The restricted chain
-
-    Same stages, same step, but each table must also be made of allowed moves,
-    and the readings it answers for are the unturned ones. *)
-
-Fixpoint chain2_ok (cs : list corner) (es : list edge) (ss : list stage) : bool :=
-  match ss with
-  | [] => true
-  | Cstage X t b :: r =>
-      ctable_ok t cs es X && forallb (ccovers t) (cdomain0 cs) &&
-      ctable_bounded t b && negb (corner_inb X cs) &&
-      forallb (fun e => phase2_word (snd e)) t && chain2_ok (X :: cs) es r
-  | Estage Y t b :: r =>
-      etable_ok t cs es Y && forallb (ecovers t) (edomain2 es Y) &&
-      etable_bounded t b && negb (edge_inb Y es) &&
-      forallb (fun e => phase2_word (snd e)) t && chain2_ok cs (Y :: es) r
-  end.
-
-(** Running the restricted stages finishes their slots, stays inside the
-    subgroup, and uses only allowed moves. *)
-Lemma chain2_correct ss : forall cs es d,
-  chain2_ok cs es ss = true -> generated d -> in_subgroup d ->
-  solvedc d cs -> solvede d es ->
-  generated (chain_state ss d) /\ in_subgroup (chain_state ss d) /\
-  solvedc (chain_state ss d) (stagesc ss ++ cs) /\
-  solvede (chain_state ss d) (stagese ss ++ es) /\
-  phase2_word (chain_word ss d) = true /\
-  length (chain_word ss d) <= chain_bound ss.
-Proof.
-  induction ss as [| s ss IH]; intros cs es d Hok Hg Hsub Hc He.
-  { simpl; refine (conj Hg (conj Hsub (conj Hc (conj He (conj _ _)))));
-      [reflexivity | simpl; lia]. }
-  simpl in Hok |- *.
-  destruct s as [X t b | Y t b];
-    repeat (apply Bool.andb_true_iff in Hok as [Hok ?]).
-  - match goal with H : negb _ = true |- _ => rename H into Hfresh end.
-    apply Bool.negb_true_iff in Hfresh.
-    assert (HX : ~ In X cs)
-      by (intro Hin; rewrite (corner_inb_true X cs Hin) in Hfresh; discriminate).
-    assert (Hcov : ccovers t (getc d X) = true)
-      by (eapply ccovers_of0; eauto using generated_wellformed).
-    assert (Hw : phase2_word (clookup t (getc d X)) = true).
-    { match goal with H : forallb _ t = true |- _ =>
-        rewrite forallb_forall in H; apply (H _ (clookup_in t _ Hcov)) end. }
-    destruct (cstep t cs es X d ltac:(assumption) Hcov Hc He) as [Hc' He'].
-    destruct (IH (X :: cs) es _ ltac:(assumption)
-                 (generated_step _ _ Hg)
-                 (subgroup_ccompose _ _ (phase2_word_subgroup _ Hw) Hsub)
-                 Hc' He')
-      as [Hg'' [Hs'' [Hc'' [He'' [Hp'' Hl'']]]]].
-    pose proof (clookup_bounded t (getc d X) b ltac:(assumption) Hcov).
-    rewrite <- app_assoc; simpl.
-    refine (conj Hg'' (conj Hs'' (conj Hc'' (conj He'' (conj _ _))))).
-    + unfold phase2_word in *; rewrite forallb_app, Hp'', Hw; reflexivity.
-    + rewrite length_app; lia.
-  - match goal with H : negb _ = true |- _ => rename H into Hfresh end.
-    apply Bool.negb_true_iff in Hfresh.
-    assert (HY : ~ In Y es)
-      by (intro Hin; rewrite (edge_inb_true Y es Hin) in Hfresh; discriminate).
-    assert (Hcov : ecovers t (gete d Y) = true)
-      by (eapply ecovers_of2; eauto using generated_wellformed).
-    assert (Hw : phase2_word (elookup t (gete d Y)) = true).
-    { match goal with H : forallb _ t = true |- _ =>
-        rewrite forallb_forall in H; apply (H _ (elookup_in t _ Hcov)) end. }
-    destruct (estep t cs es Y d ltac:(assumption) Hcov Hc He) as [Hc' He'].
-    destruct (IH cs (Y :: es) _ ltac:(assumption)
-                 (generated_step _ _ Hg)
-                 (subgroup_ccompose _ _ (phase2_word_subgroup _ Hw) Hsub)
-                 Hc' He')
-      as [Hg'' [Hs'' [Hc'' [He'' [Hp'' Hl'']]]]].
-    pose proof (elookup_bounded t (gete d Y) b ltac:(assumption) Hcov).
-    rewrite <- app_assoc; simpl.
-    refine (conj Hg'' (conj Hs'' (conj Hc'' (conj He'' (conj _ _))))).
-    + unfold phase2_word in *; rewrite forallb_app, Hp'', Hw; reflexivity.
-    + rewrite length_app; lia.
-Qed.
+(** Reading the policy's own fields back, so a hypothesis about a run says
+    what it plainly means. *)
+Lemma restricted_usable w : usable restricted w = phase2_word w.
+Proof. reflexivity. Qed.
 
 (** The eighth up-or-down edge is forced: inside the subgroup no slice edge
     can sit in its slot, and the other seven are taken. *)

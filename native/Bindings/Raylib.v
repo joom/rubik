@@ -7,7 +7,7 @@
 From Crane Require Import Mapping.Std Mapping.NatIntStd
   Mapping.ZInt Mapping.Real Monads.ITree.
 From Crane Require Extraction.
-From Rubik Require Export native.RaylibDefs.
+From Rubik Require Export Native.Bindings.RaylibDefs.
 
 (** The off-screen target handle is whatever the helper header calls it. *)
 Crane Extract Inlined Constant rl_texture => "rl_texture" From "raylib_helpers.h".

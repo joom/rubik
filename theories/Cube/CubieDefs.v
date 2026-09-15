@@ -1,5 +1,5 @@
 From Stdlib Require Import List.
-From Rubik Require Export BasicRubik.
+From Rubik Require Export Cube.BasicRubik.
 Import ListNotations.
 
 (** * The cubie model

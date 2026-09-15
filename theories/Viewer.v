@@ -1,5 +1,5 @@
-From Stdlib Require Import Arith Lia List.
-From Rubik Require Import BasicRubik Geometry Solve.
+From Stdlib Require Import Arith List.
+From Rubik Require Import Cube.BasicRubik Cube.Geometry Search.Solve.
 Import ListNotations.
 
 (** * A value-only boundary for the native viewer *)
@@ -81,6 +81,8 @@ Qed.
     and eighteen, since the deepening stops at the first depth that works; the
     limits only decide when the worker abandons a cube it cannot solve. *)
 Definition phase1_limit : nat := full_bound.
+
+(** And the depth the second phase is allowed. *)
 Definition phase2_limit : nat := domino_bound.
 
 (** The worker solves its snapshot in two phases. The six pruning tables are

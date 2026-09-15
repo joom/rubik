@@ -1,3 +1,6 @@
+; Subdirectories are part of the theory, so Cube/Cubie.v is Rubik.Cube.Cubie.
+(include_subdirs qualified)
+
 (coq.theory
  (name Rubik)
  (package rocq-rubik)

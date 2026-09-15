@@ -9,13 +9,18 @@ synopsis: "A certified solver for the Rubik 3x3x3 cube"
 description: """
 A full 54-sticker model of the 3x3x3 Rubik's cube, with six fixed centers
 and all 18 face turns, and a solver for it after Kociemba's two-phase
-method. Rocq proofs establish that a turn agrees with an independent
-geometric account of it, that the 8 corner and 12 edge pieces are a faithful
-second view of the same cube, and that every sequence the solver returns
-really solves the cube it was given. Solutions are short but not always
-shortest, and the pruning tables the search uses are checked rather than
-proved, so a wrong table could only make the search wander, never make it
-accept a sequence that does not solve.
+method. Two theorems about the solver are proved with nothing assumed: every
+sequence it returns really solves the cube it was given, and on a cube a real
+scramble can produce it always returns one. Along the way the proofs
+establish that a turn agrees with an independent geometric account of it,
+that the 8 corner and 12 edge pieces are a faithful second view of the same
+cube, and that the four quantities a reachable cube is bound by, including
+permutation parity, are invariant.
+
+Solutions are short but not always shortest, and no theorem bounds their
+length. The tables the search relies on are built by unproved procedures and
+then checked by computation when the proofs compile, so a wrong table fails
+to compile rather than proving anything false.
 
 The package covers the proofs only. The raylib viewer under native/ is built
 separately and needs the Crane submodule.

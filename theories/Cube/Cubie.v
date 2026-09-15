@@ -1,5 +1,5 @@
 From Stdlib Require Import List.
-From Rubik Require Export CubieDefs CubieTables.
+From Rubik Require Export Cube.CubieDefs Cube.CubieTables.
 Import ListNotations.
 
 (** * The piece model and the sticker model agree
@@ -222,6 +222,7 @@ Proof. apply paint_inj; rewrite !paint_cturn; apply inverse_undoes. Qed.
 (** Undoing a whole sequence: its moves inverted, in the other order. *)
 Definition inverse_path (p : list move) : list move := rev (map inverse p).
 
+(** Undoing one more move means undoing it last. *)
 Lemma inverse_path_cons m p : inverse_path (m :: p) = inverse_path p ++ [inverse m].
 Proof. reflexivity. Qed.
 
@@ -237,6 +238,7 @@ Qed.
 (** A cube that can be solved stays solvable however it is turned. *)
 Definition csolvable (c : cube) : Prop := exists p, crun c p = csolved.
 
+(** A cube that can be solved stays solvable however it is turned. *)
 Lemma csolvable_crun c p : csolvable c -> csolvable (crun c p).
 Proof.
   intros [r Hr]; exists (inverse_path p ++ r);

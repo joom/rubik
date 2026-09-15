@@ -1,5 +1,5 @@
 From Stdlib Require Import List.
-From Rubik Require Export Cubie.
+From Rubik Require Export Cube.Cubie.
 Import ListNotations.
 
 (** * The subgroup the two phases meet in
