@@ -5,7 +5,7 @@ DUNE ?= dune
 ROCQCHK ?= rocqchk
 BUILD := _build/default
 GENERATED := native/generated
-MODULES := Cube.Sticker Cube.TurnTables Cube.BasicRubik Cube.Geometry Cube.CubieDefs Cube.CubieTables Cube.Cubie Cube.Group Cube.Parity Cube.ParityTables Cube.Subgroup Cube.Invariant Bounds.Chain Bounds.ChainTables Bounds.Domino Bounds.DominoTables Bounds.Solvable Search.Prune Search.Admissible Search.Tables Search.Phase1 Search.Phase2 Search.Solve Viewer Example
+MODULES := Cube.Sticker Cube.TurnTables Cube.BasicRubik Cube.Geometry Cube.CubieDefs Cube.CubieTables Cube.Cubie Cube.Group Cube.Parity Cube.ParityTables Cube.Subgroup Cube.Invariant Bounds.Chain Bounds.ChainTables Bounds.Domino Bounds.DominoTables Bounds.Solvable Search.Prune Search.Admissible Search.Tables Search.Phase1 Search.Phase2 Search.Solve Viewer Audit
 
 .DEFAULT_GOAL := all
 .PHONY: all extract check check-generated check-chain tests html install clean web

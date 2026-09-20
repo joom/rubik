@@ -13,7 +13,7 @@ Definition two_phase (T1 : tables1) (T2 : tables2) (lim1 lim2 : nat) (c : cube)
   match phase1 T1 lim1 c with
   | None => None
   | Some p =>
-      match phase2 T2 lim2 (crun c p) with
+      match phase2 T2 lim2 (run_cube c p) with
       | None => None
       | Some q => Some (p ++ q)
       end
@@ -21,11 +21,11 @@ Definition two_phase (T1 : tables1) (T2 : tables2) (lim1 lim2 : nat) (c : cube)
 
 (** Whatever the two phases return solves the cube. *)
 Theorem two_phase_sound T1 T2 lim1 lim2 c p :
-  two_phase T1 T2 lim1 lim2 c = Some p -> crun c p = csolved.
+  two_phase T1 T2 lim1 lim2 c = Some p -> run_cube c p = solved_cube.
 Proof.
   unfold two_phase; destruct (phase1 T1 lim1 c) as [a |] eqn:E1; [| discriminate].
-  destruct (phase2 T2 lim2 (crun c a)) as [b |] eqn:E2; [| discriminate].
-  intro H; inversion H; subst; rewrite crun_app.
+  destruct (phase2 T2 lim2 (run_cube c a)) as [b |] eqn:E2; [| discriminate].
+  intro H; inversion H; subst; rewrite run_cube_app.
   exact (phase2_sound _ _ _ _ E2).
 Qed.
 
@@ -46,8 +46,8 @@ Theorem solve_two_phase_sound T1 T2 lim1 lim2 s p :
 Proof.
   intros Hv H; unfold solve_two_phase in H.
   apply two_phase_sound in H.
-  rewrite <- (paint_to_cubies s Hv), <- paint_crun, H.
-  apply paint_csolved.
+  rewrite <- (paint_to_cubies s Hv), <- paint_run_cube, H.
+  apply paint_solved_cube.
 Qed.
 
 (** * Why the solver always answers
@@ -64,19 +64,19 @@ Qed.
     method needs, not the lengths the two-phase search returns, which on a
     real cube is around twenty. *)
 Definition phase1_reach (lim1 : nat) : Prop :=
-  forall c, csolvable c -> exists q, in_subgroup (crun c q) /\ length q <= lim1.
+  forall c, solvable c -> exists q, in_subgroup (run_cube c q) /\ length q <= lim1.
 
 (** And how far the second phase may have to look, using only allowed moves. *)
 Definition phase2_reach (lim2 : nat) : Prop :=
-  forall c, csolvable c -> in_subgroup c ->
+  forall c, solvable c -> in_subgroup c ->
     exists q, Forall (fun m => phase2_move m = true) q /\
-      crun c q = csolved /\ length q <= lim2.
+      run_cube c q = solved_cube /\ length q <= lim2.
 
 (** A solution reaches the subgroup, since the solved cube is in it. *)
 Theorem phase1_reach_bound : phase1_reach full_bound.
 Proof.
   intros c Hs; destruct (full_solution c Hs) as [r [Hr Hl]].
-  exists r; split; [rewrite Hr; apply csolved_in_subgroup | exact Hl].
+  exists r; split; [rewrite Hr; apply solved_cube_in_subgroup | exact Hl].
 Qed.
 
 (** And inside the subgroup the allowed moves suffice. *)
@@ -85,7 +85,7 @@ Proof. exact subgroup_solution. Qed.
 
 (** The two phases always return. *)
 Theorem two_phase_complete u1 u2 c :
-  csolvable c ->
+  solvable c ->
   exists p, two_phase (build_tables1 u1) (build_tables2 u2)
               full_bound domino_bound c = Some p.
 Proof.
@@ -94,21 +94,21 @@ Proof.
   destruct (phase1_complete (build_tables1 u1) full_bound c q1
               (estimate1_admissible u1) HG Hl1) as [p Hp].
   rewrite Hp.
-  assert (HG1 : in_subgroup (crun c p)) by (apply phase1_sound with (1 := Hp)).
-  destruct (phase2_reach_bound (crun c p) (csolvable_crun c p Hs) HG1)
+  assert (HG1 : in_subgroup (run_cube c p)) by (apply phase1_sound with (1 := Hp)).
+  destruct (phase2_reach_bound (run_cube c p) (solvable_run_cube c p Hs) HG1)
     as [q2 [Hf2 [Hsol Hl2]]].
-  destruct (phase2_complete (build_tables2 u2) domino_bound (crun c p) q2
+  destruct (phase2_complete (build_tables2 u2) domino_bound (run_cube c p) q2
               (estimate2_admissible u2) Hf2 Hsol Hl2) as [r Hr].
   rewrite Hr; exists (p ++ r); reflexivity.
 Qed.
 
 (** A physically valid sticker cube reads back as a solvable cube. *)
-Lemma csolvable_to_cubies s : valid_state s -> csolvable (to_cubies s).
+Lemma solvable_to_cubies s : valid_state s -> solvable (to_cubies s).
 Proof.
   intros [p <-].
-  replace (to_cubies (run init_state p)) with (crun csolved p);
-    [apply csolvable_crun; exists []; reflexivity |].
-  rewrite <- paint_csolved, <- paint_crun, to_cubies_paint; reflexivity.
+  replace (to_cubies (run init_state p)) with (run_cube solved_cube p);
+    [apply solvable_run_cube; exists []; reflexivity |].
+  rewrite <- paint_solved_cube, <- paint_run_cube, to_cubies_paint; reflexivity.
 Qed.
 
 (** So the solver answers on every cube a real scramble can produce. This is
@@ -121,5 +121,5 @@ Theorem solve_two_phase_complete u1 u2 s :
               full_bound domino_bound s = Some p.
 Proof.
   intro Hv; unfold solve_two_phase.
-  apply two_phase_complete; auto using csolvable_to_cubies.
+  apply two_phase_complete; auto using solvable_to_cubies.
 Qed.

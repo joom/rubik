@@ -119,10 +119,10 @@ Proof. apply solve_snapshot_sound. Qed.
 (** * Pure interaction state *)
 
 (** Named phases distinguish pending work, successful plans, and bounded failure. *)
-Inductive phase := Ready | Searching | SolutionReady | Solved | NoSolution | InvalidReply.
+Inductive ui_state := Ready | Searching | SolutionReady | Solved | NoSolution | InvalidReply.
 
 (** Encode display phases at the native boundary, without exposing Rocq constructors. *)
-Definition phase_code (p : phase) : nat :=
+Definition ui_state_code (p : ui_state) : nat :=
   match p with
   | Ready => 0 | Searching => 1 | SolutionReady => 2 | Solved => 3
   | NoSolution => 4 | InvalidReply => 6
@@ -134,7 +134,7 @@ Record view := View {
   history : list move; (** Executed moves, newest first, for undo. *)
   solution : list move; (** Remaining solution moves in execution order. *)
   playing : bool; (** Whether timer events advance the solution. *)
-  status : phase (** The current interaction phase. *)
+  status : ui_state (** The current interaction state. *)
 }.
 
 (** Start solved with no pending actions. *)

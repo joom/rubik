@@ -158,3 +158,46 @@ Proof.
     apply Permutation_cons_app_inv in H.
     apply in_flat_map; exists (l1 ++ l2); split; [apply IH, H | apply insert_all_split].
 Qed.
+
+(** * Staying inside the space
+
+    The one thing every coordinate has to prove about its own stepping
+    function, because [consistentb_admissible] asks for it: stepping a state
+    of the space lands back in the space. There are only two ways a
+    coordinate ever comes by it, and both are proved once here.
+
+    Apply them with the space and the move list written out rather than left
+    to the unifier: inferring those means computing the space, and for the
+    placement coordinates that is 40320 lists. *)
+
+(** Steps that keep the tuple's length land back among the tuples of that
+    length, whatever else they do to it. *)
+Lemma tuples_closed {A M : Type} (xs : list A) (n : nat)
+    (ms : list M) (act : M -> list A -> list A) :
+  (forall x : A, In x xs) ->
+  (forall m l, In l (@tuples A n xs) -> length (act m l) = n) ->
+  forall x y, In x (@tuples A n xs) ->
+              In y (map (fun m => act m x) ms) -> In y (@tuples A n xs).
+Proof.
+  intros Hx Hlen p q Hp Hq; apply in_map_iff in Hq as [m [<- _]].
+  apply tuples_complete; [exact Hx | apply Hlen, Hp].
+Qed.
+
+(** And steps that only rearrange land back among the rearrangements. *)
+Lemma perms_closed {A M : Type} (home : list A)
+    (ms : list M) (act : M -> list A -> list A) :
+  (forall m l, In m ms -> In l (perms home) -> Permutation l (act m l)) ->
+  forall x y, In x (perms home) ->
+              In y (map (fun m => act m x) ms) -> In y (perms home).
+Proof.
+  intros Hact p q Hp Hq; apply in_map_iff in Hq as [m [<- Hm]].
+  apply perms_complete, perm_trans with p;
+    [apply perms_sound, Hp | apply Hact; assumption].
+Qed.
+
+(** Two ground tuples are rearrangements of each other when every value occurs
+    in both the same number of times. That is how each placement coordinate
+    finishes: both sides are concrete tuples, so counting decides it. *)
+Ltac permutation_by_count eqd :=
+  apply (Permutation_count_occ eqd);
+  let v := fresh "v" in intro v; cbn; repeat (destruct (eqd _ v)); lia.

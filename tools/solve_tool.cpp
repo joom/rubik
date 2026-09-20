@@ -42,19 +42,19 @@ int main() {
     std::string mode;
     in >> mode;
     cube c{};
-    cslot *cs[8] = {&c.xURF, &c.xUFL, &c.xULB, &c.xUBR,
-                    &c.xDFR, &c.xDLF, &c.xDBL, &c.xDRB};
-    eslot *es[12] = {&c.yUR, &c.yUF, &c.yUL, &c.yUB, &c.yDR, &c.yDF,
-                     &c.yDL, &c.yDB, &c.yFR, &c.yFL, &c.yBL, &c.yBR};
+    corner_slot *cs[8] = {&c.xURF, &c.xUFL, &c.xULB, &c.xUBR,
+                          &c.xDFR, &c.xDLF, &c.xDBL, &c.xDRB};
+    edge_slot *es[12] = {&c.yUR, &c.yUF, &c.yUL, &c.yUB, &c.yDR, &c.yDF,
+                         &c.yDL, &c.yDB, &c.yFR, &c.yFL, &c.yBL, &c.yBR};
     for (auto *slot : cs) {
       int p = 0, t = 0;
       in >> p >> t;
-      *slot = cslot{static_cast<Corner>(p), static_cast<Twist>(t)};
+      *slot = corner_slot{static_cast<Corner>(p), static_cast<Twist>(t)};
     }
     for (auto *slot : es) {
       int p = 0, f = 0;
       in >> p >> f;
-      *slot = eslot{static_cast<Edge>(p), static_cast<Flip>(f)};
+      *slot = edge_slot{static_cast<Edge>(p), static_cast<Flip>(f)};
     }
     const auto answer = mode == "D" ? Phase2::phase2(t2, 30, c)
                                     : Solve::two_phase(t1, t2, 20, 30, c);

@@ -20,15 +20,15 @@ EI = {n: i for i, n in enumerate(EDGES)}
 def quarter_tables():
     """Per face: for each destination slot, (source slot, shift)."""
     text = (ROOT / "theories/Cube/CubieTables.v").read_text()
-    body = text[text.index("Definition cquarter"):]
+    body = text[text.index("Definition quarter_cube"):]
     body = body[:body.index("\n  end.")]
     out = {}
     for i, face in enumerate(FACES):
         start = body.index(f"| {face} =>")
         end = len(body) if i + 1 == len(FACES) else body.index(f"| {FACES[i + 1]} =>")
         chunk = body[start:end]
-        cs = [(CI[s], int(k)) for k, s in re.findall(r"cshift T(\d) x(\w+)", chunk)]
-        es = [(EI[s], int(k)) for k, s in re.findall(r"eshift F(\d) y(\w+)", chunk)]
+        cs = [(CI[s], int(k)) for k, s in re.findall(r"shift_corner T(\d) x(\w+)", chunk)]
+        es = [(EI[s], int(k)) for k, s in re.findall(r"shift_edge F(\d) y(\w+)", chunk)]
         assert len(cs) == 8 and len(es) == 12
         out[face] = (cs, es)
     return out
@@ -51,7 +51,7 @@ SOLVED = Cube(range(8), [0] * 8, range(12), [0] * 12)
 
 
 def compose(c, g):
-    """ccompose c g: slot X of the result reads slot g.cp[X] of c."""
+    """compose c g: slot X of the result reads slot g.cp[X] of c."""
     return Cube([c.cp[g.cp[i]] for i in range(8)],
                 [(c.co[g.cp[i]] + g.co[i]) % 3 for i in range(8)],
                 [c.ep[g.ep[i]] for i in range(12)],

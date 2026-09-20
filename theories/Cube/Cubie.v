@@ -9,62 +9,62 @@ Import ListNotations.
     about pieces is a claim about the cube the viewer draws. *)
 
 (** Rotating a piece leaves it the same piece and adds to its rotation. *)
-Lemma cshift_fst k x : fst (cshift k x) = fst x.
+Lemma shift_corner_fst k x : fst (shift_corner k x) = fst x.
 Proof. destruct x; destruct k; reflexivity. Qed.
 
 (** And adds to its rotation. *)
-Lemma cshift_snd k x : snd (cshift k x) = twist_add (snd x) k.
+Lemma shift_corner_snd k x : snd (shift_corner k x) = twist_add (snd x) k.
 Proof. destruct x; destruct k; reflexivity. Qed.
 
 (** Flipping leaves it the same piece. *)
-Lemma eshift_fst k y : fst (eshift k y) = fst y.
+Lemma shift_edge_fst k y : fst (shift_edge k y) = fst y.
 Proof. destruct y; destruct k; reflexivity. Qed.
 
 (** And adds to its flip. *)
-Lemma eshift_snd k y : snd (eshift k y) = flip_add (snd y) k.
+Lemma shift_edge_snd k y : snd (shift_edge k y) = flip_add (snd y) k.
 Proof. destruct y; destruct k; reflexivity. Qed.
 
 (** * The turn tables agree with the stickers *)
 
 (** Rotating by two amounts in succession steps the facelet position twice. *)
-Lemma ci_sub_add i t k : ci_sub i (twist_add t k) = ci_sub (ci_sub i k) t.
+Lemma corner_facet_before_add i t k : corner_facet_before i (twist_add t k) = corner_facet_before (corner_facet_before i k) t.
 Proof. destruct i, t, k; reflexivity. Qed.
 
 (** The same for an edge's two positions. *)
-Lemma ei_sub_add i f k : ei_sub i (flip_add f k) = ei_sub (ei_sub i k) f.
+Lemma edge_facet_before_add i f k : edge_facet_before i (flip_add f k) = edge_facet_before (edge_facet_before i k) f.
 Proof. destruct i, f, k; reflexivity. Qed.
 
 (** Rotating a piece within its slot shifts which facelet each position shows. *)
 Lemma corner_color_shift k x i :
-  corner_color (cshift k x) i = corner_color x (ci_sub i k).
+  corner_color (shift_corner k x) i = corner_color x (corner_facet_before i k).
 Proof.
-  destruct x as [X t]; destruct k; cbn [cshift corner_color];
-    rewrite ?ci_sub_add; reflexivity.
+  destruct x as [X t]; destruct k; cbn [shift_corner corner_color];
+    rewrite ?corner_facet_before_add; reflexivity.
 Qed.
 
 (** And flipping an edge swaps which facelet each position shows. *)
 Lemma edge_color_shift k y i :
-  edge_color (eshift k y) i = edge_color y (ei_sub i k).
+  edge_color (shift_edge k y) i = edge_color y (edge_facet_before i k).
 Proof.
-  destruct y as [Y f]; destruct k; cbn [eshift edge_color];
-    rewrite ?ei_sub_add; reflexivity.
+  destruct y as [Y f]; destruct k; cbn [shift_edge edge_color];
+    rewrite ?edge_facet_before_add; reflexivity.
 Qed.
 
 (** Turning the cubies and then painting is painting and then turning the
     stickers. This is the bridge every later coordinate proof rests on. *)
-Theorem paint_cquarter f c : paint (cquarter f c) = quarter f (paint c).
+Theorem paint_quarter_cube f c : paint (quarter_cube f c) = quarter f (paint c).
 Proof.
-  destruct c; destruct f; cbn [paint cquarter quarter];
+  destruct c; destruct f; cbn [paint quarter_cube quarter];
     rewrite ?corner_color_shift, ?edge_color_shift;
-    cbn [ci_sub ei_sub]; reflexivity.
+    cbn [corner_facet_before edge_facet_before]; reflexivity.
 Qed.
 
 (** The twenty slots in table order, so a projection is one [map] away. *)
-Definition corner_slots (c : cube) : list cslot :=
+Definition corner_slots (c : cube) : list corner_slot :=
   [xURF c; xUFL c; xULB c; xUBR c; xDFR c; xDLF c; xDBL c; xDRB c].
 
 (** And the twelve edge slots. *)
-Definition edge_slots (c : cube) : list eslot :=
+Definition edge_slots (c : cube) : list edge_slot :=
   [yUR c; yUF c; yUL c; yUB c; yDR c; yDF c; yDL c; yDB c;
    yFR c; yFL c; yBL c; yBR c].
 
@@ -80,18 +80,18 @@ Qed.
 (** Comparing one slot. Deciding equality field by field on the whole record
     would work but produces a term extraction cannot digest, so the comparison
     goes through the slot lists instead. *)
-Definition cslot_eq_dec (x y : cslot) : {x = y} + {x <> y}.
+Definition corner_slot_eq_dec (x y : corner_slot) : {x = y} + {x <> y}.
 Proof. decide equality; decide equality. Defined.
 
 (** And one edge slot. *)
-Definition eslot_eq_dec (x y : eslot) : {x = y} + {x <> y}.
+Definition edge_slot_eq_dec (x y : edge_slot) : {x = y} + {x <> y}.
 Proof. decide equality; decide equality. Defined.
 
 (** Comparing two cubes, slot by slot. *)
 Definition cube_eqb (x y : cube) : bool :=
-  andb (if list_eq_dec cslot_eq_dec (corner_slots x) (corner_slots y)
+  andb (if list_eq_dec corner_slot_eq_dec (corner_slots x) (corner_slots y)
         then true else false)
-       (if list_eq_dec eslot_eq_dec (edge_slots x) (edge_slots y)
+       (if list_eq_dec edge_slot_eq_dec (edge_slots x) (edge_slots y)
         then true else false).
 
 (** The comparison decides equality exactly. *)
@@ -99,53 +99,53 @@ Lemma cube_eqb_spec x y : cube_eqb x y = true <-> x = y.
 Proof.
   unfold cube_eqb; split.
   - intro H; apply Bool.andb_true_iff in H as [H1 H2].
-    destruct (list_eq_dec cslot_eq_dec _ _) as [Hc |]; [| discriminate].
-    destruct (list_eq_dec eslot_eq_dec _ _) as [He |]; [| discriminate].
+    destruct (list_eq_dec corner_slot_eq_dec _ _) as [Hc |]; [| discriminate].
+    destruct (list_eq_dec edge_slot_eq_dec _ _) as [He |]; [| discriminate].
     apply slots_determine; assumption.
   - intros ->.
-    destruct (list_eq_dec cslot_eq_dec _ _); [| contradiction].
-    destruct (list_eq_dec eslot_eq_dec _ _); [| contradiction]; reflexivity.
+    destruct (list_eq_dec corner_slot_eq_dec _ _); [| contradiction].
+    destruct (list_eq_dec edge_slot_eq_dec _ _); [| contradiction]; reflexivity.
 Qed.
 
 (** * Moves and sequences *)
 
 (** Every piece at home and unturned. *)
-Definition csolved : cube :=
+Definition solved_cube : cube :=
   Cube (URF, T0) (UFL, T0) (ULB, T0) (UBR, T0)
        (DFR, T0) (DLF, T0) (DBL, T0) (DRB, T0)
        (UR, F0) (UF, F0) (UL, F0) (UB, F0) (DR, F0) (DF, F0)
        (DL, F0) (DB, F0) (FR, F0) (FL, F0) (BL, F0) (BR, F0).
 
 (** The solved cubies paint the solved cube. *)
-Lemma paint_csolved : paint csolved = init_state.
+Lemma paint_solved_cube : paint solved_cube = init_state.
 Proof. reflexivity. Qed.
 
 (** One, two, or three quarter turns, mirroring [turn]. *)
-Definition cturn (m : move) (c : cube) : cube :=
+Definition turn_cube (m : move) (c : cube) : cube :=
   let (f, t) := m in
   match t with
-  | CW => cquarter f c
-  | Half => cquarter f (cquarter f c)
-  | CCW => cquarter f (cquarter f (cquarter f c))
+  | CW => quarter_cube f c
+  | Half => quarter_cube f (quarter_cube f c)
+  | CCW => quarter_cube f (quarter_cube f (quarter_cube f c))
   end.
 
 (** The bridge extends from quarter turns to every legal move. *)
-Theorem paint_cturn m c : paint (cturn m c) = turn m (paint c).
+Theorem paint_turn_cube m c : paint (turn_cube m c) = turn m (paint c).
 Proof.
-  destruct m as [f t]; destruct t; cbn [cturn]; unfold_moves;
-    repeat rewrite paint_cquarter; reflexivity.
+  destruct m as [f t]; destruct t; cbn [turn_cube]; unfold_moves;
+    repeat rewrite paint_quarter_cube; reflexivity.
 Qed.
 
 (** A sequence acts on the cubies left to right, as it does on the stickers. *)
-Definition crun (c : cube) (p : list move) : cube :=
-  fold_left (fun c m => cturn m c) p c.
+Definition run_cube (c : cube) (p : list move) : cube :=
+  fold_left (fun c m => turn_cube m c) p c.
 
 (** The bridge extends from moves to whole sequences. *)
-Theorem paint_crun c p : paint (crun c p) = run (paint c) p.
+Theorem paint_run_cube c p : paint (run_cube c p) = run (paint c) p.
 Proof.
   revert c; induction p as [| m p IH]; intro c; [reflexivity |].
-  change (paint (crun (cturn m c) p) = run (turn m (paint c)) p).
-  rewrite IH, paint_cturn; reflexivity.
+  change (paint (run_cube (turn_cube m c) p) = run (turn m (paint c)) p).
+  rewrite IH, paint_turn_cube; reflexivity.
 Qed.
 
 (** * Reading the cubies back off the stickers *)
@@ -171,7 +171,7 @@ Qed.
 (** Every cube a scramble can produce is painted by some cubie arrangement. *)
 Lemma valid_painted s : valid_state s -> exists c, paint c = s.
 Proof.
-  intros [p <-]; exists (crun csolved p); rewrite paint_crun, paint_csolved; reflexivity.
+  intros [p <-]; exists (run_cube solved_cube p); rewrite paint_run_cube, paint_solved_cube; reflexivity.
 Qed.
 
 (** So on a physically valid cube the two models are inverse to one another,
@@ -194,30 +194,30 @@ Proof.
 Qed.
 
 (** Two turns of one face are one turn of that face, or nothing at all. *)
-Lemma csame_face_merge (f : face) (t1 t2 : amount) :
-  (forall c, cturn (f, t2) (cturn (f, t1) c) = c) \/
-  (exists t3, forall c, cturn (f, t2) (cturn (f, t1) c) = cturn (f, t3) c).
+Lemma same_face_merge_cube (f : face) (t1 t2 : amount) :
+  (forall c, turn_cube (f, t2) (turn_cube (f, t1) c) = c) \/
+  (exists t3, forall c, turn_cube (f, t2) (turn_cube (f, t1) c) = turn_cube (f, t3) c).
 Proof.
   destruct (same_face_merge f t1 t2) as [H | [t3 H]].
-  - left; intro c; apply paint_inj; rewrite !paint_cturn; apply H.
-  - right; exists t3; intro c; apply paint_inj; rewrite !paint_cturn; apply H.
+  - left; intro c; apply paint_inj; rewrite !paint_turn_cube; apply H.
+  - right; exists t3; intro c; apply paint_inj; rewrite !paint_turn_cube; apply H.
 Qed.
 
 (** Turns of opposite faces commute. *)
-Lemma cmove_comm f g t1 t2 c :
+Lemma move_comm_cube f g t1 t2 c :
   opposite f g = true ->
-  cturn (f, t1) (cturn (g, t2) c) = cturn (g, t2) (cturn (f, t1) c).
+  turn_cube (f, t1) (turn_cube (g, t2) c) = turn_cube (g, t2) (turn_cube (f, t1) c).
 Proof.
-  intro H; apply paint_inj; rewrite !paint_cturn; apply move_comm, H.
+  intro H; apply paint_inj; rewrite !paint_turn_cube; apply move_comm, H.
 Qed.
 
 (** Running a sequence in stages is running the whole of it. *)
-Lemma crun_app c p q : crun c (p ++ q) = crun (crun c p) q.
-Proof. unfold crun; apply fold_left_app. Qed.
+Lemma run_cube_app c p q : run_cube c (p ++ q) = run_cube (run_cube c p) q.
+Proof. unfold run_cube; apply fold_left_app. Qed.
 
 (** Following a move by its inverse restores the cube. *)
-Lemma cinverse_undoes m c : cturn (inverse m) (cturn m c) = c.
-Proof. apply paint_inj; rewrite !paint_cturn; apply inverse_undoes. Qed.
+Lemma inverse_undoes_cube m c : turn_cube (inverse m) (turn_cube m c) = c.
+Proof. apply paint_inj; rewrite !paint_turn_cube; apply inverse_undoes. Qed.
 
 (** Undoing a whole sequence: its moves inverted, in the other order. *)
 Definition inverse_path (p : list move) : list move := rev (map inverse p).
@@ -227,22 +227,22 @@ Lemma inverse_path_cons m p : inverse_path (m :: p) = inverse_path p ++ [inverse
 Proof. reflexivity. Qed.
 
 (** Running a sequence and then undoing it leaves the cube alone. *)
-Lemma crun_inverse_path c p : crun (crun c p) (inverse_path p) = c.
+Lemma run_cube_inverse_path c p : run_cube (run_cube c p) (inverse_path p) = c.
 Proof.
   revert c; induction p as [| m p IH]; intro c; [reflexivity |].
   rewrite inverse_path_cons.
-  change (crun c (m :: p)) with (crun (cturn m c) p).
-  rewrite crun_app, IH; apply cinverse_undoes.
+  change (run_cube c (m :: p)) with (run_cube (turn_cube m c) p).
+  rewrite run_cube_app, IH; apply inverse_undoes_cube.
 Qed.
 
 (** A cube that can be solved stays solvable however it is turned. *)
-Definition csolvable (c : cube) : Prop := exists p, crun c p = csolved.
+Definition solvable (c : cube) : Prop := exists p, run_cube c p = solved_cube.
 
 (** A cube that can be solved stays solvable however it is turned. *)
-Lemma csolvable_crun c p : csolvable c -> csolvable (crun c p).
+Lemma solvable_run_cube c p : solvable c -> solvable (run_cube c p).
 Proof.
   intros [r Hr]; exists (inverse_path p ++ r);
-    rewrite crun_app, crun_inverse_path; exact Hr.
+    rewrite run_cube_app, run_cube_inverse_path; exact Hr.
 Qed.
 
 (** * Reading a cube one aspect at a time

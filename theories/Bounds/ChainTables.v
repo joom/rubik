@@ -15,7 +15,7 @@ Import ListNotations.
     what they must hold is forced. *)
 
 (** Finishing the URF slot, with nothing else finished. *)
-Definition urf_table : ctable :=
+Definition urf_table : corner_table :=
   [((URF, T0), []);
    ((URF, T1), [(Right, Half); (Front, Half); (Down, CW); (Left, Half); (Down, CCW); (Front, Half); (Down, CW); (Left, Half); (Down, CCW); (Front, Half); (Up, CW); (Right, Half); (Right, CCW); (Down, CCW); (Left, Half); (Down, CW); (Right, CCW); (Up, CCW); (Right, Half)]);
    ((URF, T2), [(Up, CW); (Front, Half); (Up, CW); (Left, Half); (Down, CCW); (Back, Half); (Up, CCW); (Back, Half); (Up, CCW); (Front, Half); (Right, Half); (Back, Half); (Up, CCW); (Right, CCW); (Front, CCW); (Left, CW); (Back, Half); (Left, CCW); (Front, CW); (Right, CCW)]);
@@ -42,7 +42,7 @@ Definition urf_table : ctable :=
    ((DRB, T2), [(Back, Half); (Up, CCW); (Back, Half); (Down, CW); (Left, Half); (Down, CCW); (Left, Half); (Down, CW); (Front, Half); (Down, CCW); (Left, Half); (Up, CW); (Left, Half); (Up, CCW); (Back, CCW); (Down, CW); (Front, Half); (Down, CCW); (Back, CW)])].
 
 (** Finishing the UFL slot, with 1 corners already finished. *)
-Definition ufl_table : ctable :=
+Definition ufl_table : corner_table :=
   [((UFL, T0), []);
    ((UFL, T1), [(Front, Half); (Right, Half); (Up, CW); (Front, Half); (Up, CCW); (Left, Half); (Up, CW); (Front, Half); (Up, CCW); (Right, Half); (Up, CW); (Front, Half); (Front, CCW); (Down, CCW); (Back, Half); (Down, CW); (Front, CCW); (Up, CCW); (Front, Half)]);
    ((UFL, T2), [(Down, CCW); (Front, Half); (Down, CW); (Back, Half); (Down, CCW); (Front, Half); (Down, CW); (Right, Half); (Right, CCW); (Front, Half); (Right, CCW); (Back, Half); (Right, CW); (Front, Half); (Right, CCW)]);
@@ -66,7 +66,7 @@ Definition ufl_table : ctable :=
    ((DRB, T2), [(Down, Half); (Front, Half); (Down, CCW); (Front, Half); (Down, CCW); (Right, Half); (Up, CW); (Front, Half); (Down, CCW); (Front, Half); (Up, CW); (Left, Half); (Up, CCW); (Left, CCW); (Up, CCW); (Right, Half); (Up, CW); (Left, CCW); (Up, CCW)])].
 
 (** Finishing the ULB slot, with 2 corners already finished. *)
-Definition ulb_table : ctable :=
+Definition ulb_table : corner_table :=
   [((ULB, T0), []);
    ((ULB, T1), [(Back, Half); (Down, CW); (Back, Half); (Down, CCW); (Right, Half); (Up, CW); (Right, CCW); (Up, CCW); (Back, Half); (Up, CCW); (Back, Half); (Up, CW); (Right, CCW)]);
    ((ULB, T2), [(Right, Half); (Up, CCW); (Front, Half); (Up, CW); (Back, Half); (Up, CCW); (Front, Half); (Up, CW); (Back, Half); (Down, CW); (Right, CCW); (Up, CW); (Right, CW); (Down, CCW); (Right, CCW); (Up, CCW); (Right, CCW)]);
@@ -87,7 +87,7 @@ Definition ulb_table : ctable :=
    ((DRB, T2), [(Down, Half); (Back, Half); (Down, CW); (Left, Half); (Up, CW); (Front, Half); (Left, Half); (Down, Half); (Back, Half); (Right, Half); (Down, CCW); (Left, Half); (Up, CW); (Right, Half); (Up, CCW); (Left, CCW); (Up, CCW); (Right, Half); (Up, CW); (Left, CCW)])].
 
 (** Finishing the UBR slot, with 3 corners already finished. *)
-Definition ubr_table : ctable :=
+Definition ubr_table : corner_table :=
   [((UBR, T0), []);
    ((UBR, T1), [(Back, Half); (Down, Half); (Back, Half); (Down, CW); (Back, Half); (Down, CW); (Left, Half); (Up, CCW); (Left, Half); (Up, CCW); (Front, Half); (Up, Half); (Back, CCW); (Up, CCW); (Front, Half); (Up, CW); (Back, CCW)]);
    ((UBR, T2), [(Front, Half); (Down, Half); (Back, Half); (Down, CW); (Left, Half); (Down, CW); (Left, Half); (Up, CCW); (Front, Half); (Up, CCW); (Front, Half); (Up, Half); (Front, CCW); (Down, CCW); (Back, Half); (Down, CW); (Front, CCW)]);
@@ -105,7 +105,7 @@ Definition ubr_table : ctable :=
    ((DRB, T2), [(Left, Half); (Up, CW); (Left, Half); (Up, CCW); (Left, Half); (Up, Half); (Back, Half); (Down, CW); (Front, Half); (Down, CW); (Right, Half); (Down, Half); (Back, Half); (Back, CCW); (Down, CW); (Front, Half); (Down, CCW); (Back, CW); (Up, CCW)])].
 
 (** Finishing the DFR slot, with 4 corners already finished. *)
-Definition dfr_table : ctable :=
+Definition dfr_table : corner_table :=
   [((DFR, T0), []);
    ((DFR, T1), [(Up, CCW); (Right, Half); (Up, CW); (Right, Half); (Down, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, CW); (Right, Half); (Right, CCW); (Up, CCW); (Right, CW); (Down, Half); (Right, CCW); (Up, CW); (Right, CCW)]);
    ((DFR, T2), [(Front, Half); (Up, CW); (Front, Half); (Up, CCW); (Right, Half); (Down, CW); (Right, CCW); (Up, CCW); (Right, Half); (Down, CCW); (Right, Half); (Up, CW); (Right, CCW)]);
@@ -120,7 +120,7 @@ Definition dfr_table : ctable :=
    ((DRB, T2), [(Front, Half); (Back, Half); (Up, CW); (Left, Half); (Down, CCW); (Right, Half); (Down, Half); (Front, Half); (Down, CW); (Front, Half); (Down, CW); (Front, Half); (Down, Half); (Left, CCW); (Up, CCW); (Right, Half); (Up, CW); (Left, CCW); (Up, CCW); (Front, Half)])].
 
 (** Finishing the DLF slot, with 5 corners already finished. *)
-Definition dlf_table : ctable :=
+Definition dlf_table : corner_table :=
   [((DLF, T0), []);
    ((DLF, T1), [(Right, Half); (Up, CW); (Front, Half); (Up, CCW); (Back, Half); (Up, CW); (Front, Half); (Up, CCW); (Right, CCW); (Front, Half); (Right, CW); (Back, Half); (Right, CCW); (Front, Half); (Right, CCW)]);
    ((DLF, T2), [(Left, Half); (Up, CW); (Left, Half); (Up, CCW); (Front, Half); (Down, CW); (Front, CCW); (Up, CCW); (Front, Half); (Down, CCW); (Front, Half); (Up, CW); (Front, CCW)]);
@@ -132,7 +132,7 @@ Definition dlf_table : ctable :=
    ((DRB, T2), [(Down, CCW); (Right, Half); (Down, CCW); (Right, Half); (Down, Half); (Right, Half); (Front, Half); (Down, CCW); (Front, Half); (Up, Half); (Left, Half); (Up, CCW); (Left, Half); (Up, CCW); (Left, CCW); (Up, CCW); (Right, Half); (Up, CW); (Left, CW)])].
 
 (** Finishing the DBL slot, with 6 corners already finished. *)
-Definition dbl_table : ctable :=
+Definition dbl_table : corner_table :=
   [((DBL, T0), []);
    ((DBL, T1), [(Up, CW); (Right, Half); (Up, CW); (Right, Half); (Up, CCW); (Back, Half); (Up, CCW); (Left, Half); (Down, CCW); (Right, Half); (Front, Half); (Left, Half); (Up, CCW); (Right, CCW); (Back, CCW); (Left, CW); (Front, Half); (Left, CCW); (Back, CW); (Right, CCW)]);
    ((DBL, T2), [(Right, Half); (Front, Half); (Up, CW); (Front, Half); (Up, CCW); (Back, Half); (Up, CW); (Front, Half); (Up, CCW); (Front, Half); (Up, CW); (Front, Half); (Front, CCW); (Up, CCW); (Back, Half); (Up, CW); (Front, CCW); (Up, CCW); (Right, Half)]);
@@ -141,7 +141,7 @@ Definition dbl_table : ctable :=
    ((DRB, T2), [(Down, Half); (Front, Half); (Down, CCW); (Right, Half); (Down, Half); (Back, Half); (Up, CCW); (Left, Half); (Up, Half); (Front, Half); (Up, CW); (Front, Half); (Back, Half); (Right, CCW); (Back, CCW); (Left, CW); (Front, Half); (Left, CCW); (Back, CW); (Right, CCW)])].
 
 (** Finishing the UR slot, with all eight corners already finished. *)
-Definition ur_table : etable :=
+Definition ur_table : edge_table :=
   [((UR, F0), []);
    ((UR, F1), [(Right, Half); (Down, CCW); (Right, Half); (Up, CCW); (Back, Half); (Up, CW); (Front, Half); (Up, CCW); (Back, Half); (Up, CW); (Right, Half); (Down, CW); (Right, CCW); (Back, CW); (Left, CCW); (Up, Half); (Left, CW); (Back, CCW); (Right, CCW)]);
    ((UF, F0), [(Right, Half); (Up, CCW); (Front, Half); (Left, Half); (Back, Half); (Down, CW); (Back, Half); (Left, Half); (Front, Half); (Up, Half); (Right, Half)]);
@@ -168,7 +168,7 @@ Definition ur_table : etable :=
    ((BR, F1), [(Up, CW); (Front, Half); (Right, Half); (Up, CCW); (Left, Half); (Back, Half); (Down, CCW); (Front, Half); (Up, CW); (Left, Half); (Front, Half); (Up, CW); (Right, Half); (Up, Half); (Front, CCW); (Left, CW); (Back, CCW); (Down, Half); (Front, Half); (Back, CCW); (Right, CCW); (Front, CCW); (Up, CCW)])].
 
 (** Finishing the UF slot, with all eight corners and 1 edges already finished. *)
-Definition uf_table : etable :=
+Definition uf_table : edge_table :=
   [((UF, F0), []);
    ((UF, F1), [(Front, Half); (Down, CCW); (Front, Half); (Up, CW); (Left, Half); (Up, CCW); (Back, Half); (Right, Half); (Up, CCW); (Left, Half); (Front, Half); (Left, Half); (Back, Half); (Right, Half); (Left, CCW); (Front, CW); (Left, CCW); (Front, Half); (Right, CW); (Front, CCW); (Right, CCW)]);
    ((UL, F0), [(Front, Half); (Up, CCW); (Right, Half); (Back, Half); (Left, Half); (Down, CW); (Left, Half); (Back, Half); (Right, Half); (Up, Half); (Front, Half)]);
@@ -193,7 +193,7 @@ Definition uf_table : etable :=
    ((BR, F1), [(Front, Half); (Right, Half); (Up, CCW); (Left, Half); (Back, Half); (Down, CCW); (Front, Half); (Up, CW); (Left, Half); (Front, Half); (Up, CW); (Right, Half); (Up, Half); (Front, CCW); (Left, CW); (Back, CCW); (Down, Half); (Front, Half); (Back, CCW); (Right, CCW); (Front, CCW)])].
 
 (** Finishing the UL slot, with all eight corners and 2 edges already finished. *)
-Definition ul_table : etable :=
+Definition ul_table : edge_table :=
   [((UL, F0), []);
    ((UL, F1), [(Front, Half); (Down, CCW); (Front, Half); (Down, CW); (Back, Half); (Up, CCW); (Back, Half); (Up, CW); (Right, Half); (Front, Half); (Up, CW); (Front, Half); (Back, Half); (Up, CCW); (Left, CCW); (Back, CCW); (Left, CW); (Back, Half); (Right, CCW); (Back, CW); (Right, CCW)]);
    ((UB, F0), [(Up, Half); (Front, Half); (Left, Half); (Back, Half); (Down, CW); (Back, Half); (Left, Half); (Front, Half); (Up, CCW)]);
@@ -216,7 +216,7 @@ Definition ul_table : etable :=
    ((BR, F1), [(Left, Half); (Down, CCW); (Right, Half); (Up, CCW); (Right, Half); (Up, CCW); (Back, Half); (Down, CW); (Back, Half); (Up, Half); (Left, Half); (Up, Half); (Right, CCW); (Back, CCW); (Up, CW); (Back, CW); (Up, Half); (Right, CW); (Up, CW); (Back, CW); (Up, CCW)])].
 
 (** Finishing the UB slot, with all eight corners and 3 edges already finished. *)
-Definition ub_table : etable :=
+Definition ub_table : edge_table :=
   [((UB, F0), []);
    ((UB, F1), [(Down, CW); (Right, Half); (Up, CW); (Front, Half); (Up, CCW); (Back, Half); (Up, CW); (Front, Half); (Up, CCW); (Right, Half); (Down, CCW); (Right, Half); (Right, CCW); (Front, CCW); (Left, CW); (Up, Half); (Left, CCW); (Front, CW); (Right, CCW)]);
    ((DR, F0), [(Up, CW); (Back, Half); (Left, Half); (Front, Half); (Down, CCW); (Left, Half); (Back, Half); (Right, Half); (Up, Half)]);
@@ -237,7 +237,7 @@ Definition ub_table : etable :=
    ((BR, F1), [(Front, Half); (Up, CCW); (Front, Half); (Down, CW); (Right, Half); (Down, CCW); (Right, CCW); (Back, CW); (Up, CW); (Back, CCW); (Up, CW); (Right, CW); (Up, Half); (Right, CCW)])].
 
 (** Finishing the DR slot, with all eight corners and 4 edges already finished. *)
-Definition dr_table : etable :=
+Definition dr_table : edge_table :=
   [((DR, F0), []);
    ((DR, F1), [(Front, Half); (Up, CW); (Back, Half); (Up, CCW); (Front, Half); (Down, CW); (Right, Half); (Down, CCW); (Right, Half); (Up, CW); (Front, Half); (Back, Half); (Up, CCW); (Right, CCW); (Back, CCW); (Left, CW); (Down, Half); (Left, CCW); (Back, CW); (Right, CW)]);
    ((DF, F0), [(Right, Half); (Up, CW); (Right, Half); (Back, Half); (Left, Half); (Down, CCW); (Back, Half); (Right, Half); (Front, Half); (Up, Half); (Right, Half)]);
@@ -256,7 +256,7 @@ Definition dr_table : etable :=
    ((BR, F1), [(Right, Half); (Up, CW); (Left, Half); (Left, CCW); (Down, CW); (Front, CW); (Down, CCW); (Left, CCW); (Up, CCW); (Right, CCW); (Front, CCW); (Right, CCW)])].
 
 (** Finishing the DF slot, with all eight corners and 5 edges already finished. *)
-Definition df_table : etable :=
+Definition df_table : edge_table :=
   [((DF, F0), []);
    ((DF, F1), [(Back, Half); (Down, CCW); (Right, Half); (Up, CW); (Left, Half); (Up, CCW); (Front, Half); (Down, CW); (Right, Half); (Back, Half); (Up, CW); (Right, Half); (Left, Half); (Up, CCW); (Left, CCW); (Front, CCW); (Left, CW); (Front, Half); (Right, CCW); (Front, CW); (Right, CCW)]);
    ((DL, F0), [(Front, Half); (Up, CW); (Back, Half); (Right, Half); (Front, Half); (Down, CCW); (Left, Half); (Front, Half); (Right, Half); (Up, Half); (Front, Half)]);
@@ -273,7 +273,7 @@ Definition df_table : etable :=
    ((BR, F1), [(Front, Half); (Right, Half); (Down, CW); (Left, Half); (Back, Half); (Up, CW); (Front, Half); (Down, CCW); (Left, Half); (Front, Half); (Down, CCW); (Right, Half); (Down, Half); (Front, Half); (Front, CCW); (Left, CCW); (Back, CW); (Up, Half); (Front, Half); (Back, CW); (Right, CW); (Front, CW)])].
 
 (** Finishing the DL slot, with all eight corners and 6 edges already finished. *)
-Definition dl_table : etable :=
+Definition dl_table : edge_table :=
   [((DL, F0), []);
    ((DL, F1), [(Back, Half); (Down, CCW); (Right, Half); (Up, CW); (Right, Half); (Up, CCW); (Left, Half); (Front, Half); (Up, CCW); (Left, Half); (Back, Half); (Left, Half); (Front, Half); (Right, Half); (Left, CCW); (Back, CW); (Left, CCW); (Back, Half); (Right, CW); (Back, CCW); (Right, CCW)]);
    ((DB, F0), [(Right, Half); (Down, Half); (Front, Half); (Up, CW); (Left, Half); (Back, Half); (Up, Half); (Front, Half); (Right, Half); (Down, Half); (Front, Half); (Up, CCW); (Left, CCW); (Back, Half); (Up, Half); (Front, Half); (Right, CW)]);
@@ -288,7 +288,7 @@ Definition dl_table : etable :=
    ((BR, F1), [(Right, Half); (Up, CW); (Right, Half); (Front, Half); (Left, Half); (Down, Half); (Left, Half); (Front, Half); (Right, Half); (Up, CW); (Right, CCW); (Front, Half); (Back, CCW); (Left, CCW); (Front, CCW); (Back, CW); (Down, CW); (Front, CCW); (Right, CCW)])].
 
 (** Finishing the DB slot, with all eight corners and 7 edges already finished. *)
-Definition db_table : etable :=
+Definition db_table : edge_table :=
   [((DB, F0), []);
    ((DB, F1), [(Up, Half); (Front, Half); (Left, Half); (Down, Half); (Left, Half); (Front, Half); (Up, CCW); (Right, Half); (Up, CCW); (Back, CCW); (Right, CCW); (Up, CCW); (Back, Half); (Up, CW); (Back, CW); (Right, CCW)]);
    ((FR, F0), [(Down, CW); (Front, Half); (Down, Half); (Front, Half); (Down, CW); (Right, Half); (Up, CCW); (Back, Half); (Down, CCW); (Right, Half); (Up, CCW); (Front, Half); (Up, CCW); (Right, CCW); (Down, CW); (Right, Half); (Left, Half); (Up, CCW); (Right, CCW)]);
@@ -301,7 +301,7 @@ Definition db_table : etable :=
    ((BR, F1), [(Right, Half); (Up, Half); (Left, Half); (Down, Half); (Back, CCW); (Left, Half); (Up, Half); (Right, Half); (Front, CCW); (Right, Half)])].
 
 (** Finishing the FR slot, with all eight corners and 8 edges already finished. *)
-Definition fr_table : etable :=
+Definition fr_table : edge_table :=
   [((FR, F0), []);
    ((FR, F1), [(Front, Half); (Up, CCW); (Right, Half); (Back, Half); (Down, CCW); (Left, Half); (Down, CW); (Back, Half); (Right, Half); (Up, CW); (Front, Half); (Right, Half); (Right, CCW); (Up, CCW); (Front, CW); (Up, Half); (Front, CCW); (Up, CW); (Right, CCW)]);
    ((FL, F0), [(Down, CCW); (Left, Half); (Up, CCW); (Down, CW); (Front, Half); (Up, CW)]);
@@ -312,7 +312,7 @@ Definition fr_table : etable :=
    ((BR, F1), [(Right, Half); (Down, CCW); (Front, Half); (Down, CW); (Front, Half); (Right, Half); (Up, CW); (Front, Half); (Up, CCW); (Right, Half); (Front, CCW); (Right, CCW); (Down, CW); (Right, Half); (Down, CCW); (Right, CW); (Front, CCW)])].
 
 (** Finishing the FL slot, with all eight corners and 9 edges already finished. *)
-Definition fl_table : etable :=
+Definition fl_table : edge_table :=
   [((FL, F0), []);
    ((FL, F1), [(Front, Half); (Right, Half); (Down, CW); (Back, Half); (Down, CCW); (Back, Half); (Down, CW); (Back, Half); (Down, CCW); (Right, Half); (Front, CCW); (Up, CCW); (Right, CW); (Back, Half); (Right, CCW); (Up, CW); (Front, CCW)]);
    ((BL, F0), [(Down, CCW); (Back, Half); (Up, CCW); (Down, CW); (Left, Half); (Up, CW)]);
@@ -321,15 +321,15 @@ Definition fl_table : etable :=
    ((BR, F1), [(Front, Half); (Down, CCW); (Back, Half); (Up, CW); (Left, Half); (Up, Half); (Down, CW); (Left, Half); (Up, CW); (Front, Half); (Right, Half); (Right, CCW); (Front, CW); (Down, CCW); (Front, Half); (Down, CW); (Front, CCW); (Right, CCW)])].
 
 (** Finishing the BL slot, with all eight corners and 10 edges already finished. *)
-Definition bl_table : etable :=
+Definition bl_table : edge_table :=
   [((BL, F0), []);
    ((BL, F1), [(Right, Half); (Front, Half); (Up, CW); (Left, Half); (Up, CCW); (Left, Half); (Up, CW); (Left, Half); (Up, CCW); (Front, Half); (Right, CCW); (Down, CCW); (Front, CW); (Left, Half); (Front, CCW); (Down, CW); (Right, CCW)])].
 
 (** The stages in the order they run. *)
 (** The corner stages in the order they run. *)
-Definition corner_stages : list stage := [Cstage URF urf_table 22; Cstage UFL ufl_table 21; Cstage ULB ulb_table 20; Cstage UBR ubr_table 20; Cstage DFR dfr_table 21; Cstage DLF dlf_table 22; Cstage DBL dbl_table 21].
+Definition corner_stages : list stage := [CornerStage URF urf_table 22; CornerStage UFL ufl_table 21; CornerStage ULB ulb_table 20; CornerStage UBR ubr_table 20; CornerStage DFR dfr_table 21; CornerStage DLF dlf_table 22; CornerStage DBL dbl_table 21].
 (** And the edge stages. *)
-Definition edge_stages : list stage := [Estage UR ur_table 23; Estage UF uf_table 22; Estage UL ul_table 21; Estage UB ub_table 22; Estage DR dr_table 21; Estage DF df_table 22; Estage DL dl_table 21; Estage DB db_table 19; Estage FR fr_table 19; Estage FL fl_table 18].
+Definition edge_stages : list stage := [EdgeStage UR ur_table 23; EdgeStage UF uf_table 22; EdgeStage UL ul_table 21; EdgeStage UB ub_table 22; EdgeStage DR dr_table 21; EdgeStage DF df_table 22; EdgeStage DL dl_table 21; EdgeStage DB db_table 19; EdgeStage FR fr_table 19; EdgeStage FL fl_table 18].
 
 (** The tables answer for every reading still possible, leave the finished
     slots alone, and bring their own slot home. *)
@@ -338,7 +338,7 @@ Proof. vm_compute; reflexivity. Qed.
 
 (** The corner slots they finish, newest first. *)
 Lemma corner_stages_slots :
-  stagesc corner_stages = [DBL; DLF; DFR; UBR; ULB; UFL; URF].
+  stage_corners corner_stages = [DBL; DLF; DFR; UBR; ULB; UFL; URF].
 Proof. vm_compute; reflexivity. Qed.
 
 (** The edge stages check out too, given the corners are done. *)
@@ -346,28 +346,28 @@ Lemma edge_stages_ok : chain_ok plain all_corner_slots [] edge_stages = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** The edge slots they finish, newest first. *)
-Lemma edge_stages_slots : stagese edge_stages = [FL; FR; DB; DL; DF; DR; UB; UL; UF; UR].
+Lemma edge_stages_slots : stage_edges edge_stages = [FL; FR; DB; DL; DF; DR; UB; UL; UF; UR].
 Proof. vm_compute; reflexivity. Qed.
 
 (** They finish no corner slot. *)
-Lemma edge_stages_corners : stagesc edge_stages = [].
+Lemma edge_stages_corners : stage_corners edge_stages = [].
 Proof. vm_compute; reflexivity. Qed.
 
 (** The eleventh edge holds its own piece, so its table answers only for the
     two flips it can show. *)
-Lemma bl_table_ok : etable_ok bl_table all_corner_slots [FL; FR; DB; DL; DF; DR; UB; UL; UF; UR] BL = true.
+Lemma bl_table_ok : edge_table_ok bl_table all_corner_slots [FL; FR; DB; DL; DF; DR; UB; UL; UF; UR] BL = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** It answers when that edge is unflipped, *)
-Lemma bl_table_covers_0 : ecovers bl_table (BL, F0) = true.
+Lemma bl_table_covers_0 : edge_covers bl_table (BL, F0) = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** and when it is flipped. *)
-Lemma bl_table_covers_1 : ecovers bl_table (BL, F1) = true.
+Lemma bl_table_covers_1 : edge_covers bl_table (BL, F1) = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** And its answers are short. *)
-Lemma bl_table_bounded : etable_bounded bl_table 17 = true.
+Lemma bl_table_bounded : edge_table_bounded bl_table 17 = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** The longest answer the tables allow, added up over the stages. *)

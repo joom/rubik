@@ -81,7 +81,7 @@ theories/Cube/      what a cube is, and what is true of every reachable one
 theories/Bounds/    how deep the search may have to look, proved outright
 theories/Search/    the two-phase search the program runs
 theories/Viewer.v   the value-only boundary the native viewer talks to
-theories/Example.v  executable regressions and the assumption audit
+theories/Audit.v    executable regressions and the assumption audit
 native/             the viewer itself, with its bindings under Bindings/
 scripts/            the generators for the tables checked into theories/
 tools/              a batch solver, used only to produce those tables
@@ -98,7 +98,7 @@ proof wrong, only fail to compile.
   produced by                     what it produces        what re-derives it
   --------------------------      ------------------      ------------------
   generate_moves.py           ->  TurnTables.v        ->  quarter_geometry
-  generate_cubies.py          ->  CubieTables.v       ->  paint_cquarter
+  generate_cubies.py          ->  CubieTables.v       ->  paint_quarter_cube
   generate_parity.py          ->  ParityTables.v      ->  the proofs in it
   generate_chain.py           ->  ChainTables.v       ->  chain_ok = true
     through tools/solve_tool      DominoTables.v
@@ -185,7 +185,7 @@ The two-phase search the program actually runs.
 | Module | Holds |
 | --- | --- |
 | [Prune.v](theories/Search/Prune.v) | Which moves are worth trying after a given move. |
-| [Admissible.v](theories/Search/Admissible.v) | When a distance table is safe to prune with, and how to enumerate a coordinate space. |
+| [Admissible.v](theories/Search/Admissible.v) | When a distance table is safe to prune with, how to enumerate a coordinate space, and that stepping cannot leave one. |
 | [Tables.v](theories/Search/Tables.v) | Table storage, the breadth-first builder, the six coordinates and their tables. |
 | [Phase1.v](theories/Search/Phase1.v) | The search that reaches the subgroup. |
 | [Phase2.v](theories/Search/Phase2.v) | The search that finishes inside it. |
@@ -196,7 +196,7 @@ The two-phase search the program actually runs.
 | Module | Holds |
 | --- | --- |
 | [Viewer.v](theories/Viewer.v) | The value-only boundary for the native viewer. |
-| [Example.v](theories/Example.v) | Executable regressions and the assumption audit. |
+| [Audit.v](theories/Audit.v) | Executable regressions and the assumption audit. |
 
 ## Using the solver
 
@@ -232,19 +232,19 @@ it, and `tables1_checked` and `tables2_checked` run it.
 
 [Cubie.v](theories/Cube/Cubie.v) connects the two views of a cube. The stickers
 say where 54 colors sit; the solver works with 8 corner pieces and 12 edge
-pieces, each in a slot and rotated within it. `paint_cquarter` proves the two
+pieces, each in a slot and rotated within it. `paint_quarter_cube` proves the two
 views agree move for move, and `paint_to_cubies` that they are inverse on any
 cube a scramble can produce.
 
 [Group.v](theories/Cube/Group.v) reads a cube as the rearrangement that produced
-it, so two cubes compose. `crun_element` proves that running a sequence on any
+it, so two cubes compose. `run_cube_element` proves that running a sequence on any
 cube is composing that cube with the one the sequence denotes. That is what
 makes a solving method checkable: a claim about every cube a sequence might
 meet becomes a claim about one cube, which is a computation.
 
 [Parity.v](theories/Cube/Parity.v) counts a rearrangement's inversions. A quarter
 turn is a four-cycle on the corners and a four-cycle on the edges, so each
-parity flips and their combination does not. `cparity_element` rules out a
+parity flips and their combination does not. `cube_parity_element` rules out a
 cube with exactly two pieces exchanged, which is the last thing a solving
 method has to know.
 
@@ -258,7 +258,7 @@ in order to answer.
 same face are never tried, and adjacent opposite faces are kept in one order
 only. `normalise` there proves the pruning loses nothing, by rewriting any
 sequence into one the pruning keeps that lands in the same place and is no
-longer. [Example.v](theories/Example.v) contains executable regressions and
+longer. [Audit.v](theories/Audit.v) contains executable regressions and
 the assumption audit.
 
 ## Play it in a browser
@@ -473,18 +473,18 @@ graph inside Rocq, which is available for the
 | `quarter_geometry` | Every sticker follows a clockwise 3D outer-layer rotation. |
 | `quarter_four`, `inverse_undoes` | Four quarter turns are identity; every move has an inverse, which is what the viewer's undo uses. |
 | `valid_centers` | Legal sequences preserve the solved centers. |
-| `paint_cquarter`, `paint_crun` | Turning the pieces and painting agrees with painting and turning the stickers. |
+| `paint_quarter_cube`, `paint_run_cube` | Turning the pieces and painting agrees with painting and turning the stickers. |
 | `to_cubies_paint`, `paint_to_cubies` | The sticker view and the piece view are inverse on any reachable cube. |
 | `twist_total_valid`, `flip_total_valid`, `slice_count_valid` | Corner rotations and edge flips cancel, and the slice always holds four edges; a single twisted corner is therefore unreachable. |
 | `phase2_move_keeps_subgroup` | The ten moves the second phase uses never undo the first phase's work. |
-| `twists_cturn`, `flips_cturn`, `slice_mask_cturn`, `corner_pieces_cturn`, `ud_pieces_cturn`, `slice_pieces_cturn` | Each coordinate moves on its own, so each can be searched as a space of its own. |
+| `twists_turn_cube`, `flips_turn_cube`, `slice_mask_turn_cube`, `corner_pieces_turn_cube`, `ud_pieces_turn_cube`, `slice_pieces_turn_cube` | Each coordinate moves on its own, so each can be searched as a space of its own. |
 | `consistentb_admissible` | A table that passes its check never overestimates, so pruning with it cannot lose a solution. |
 | `tables1_checked`, `tables2_checked` | The six pruning tables pass that check, over all 95417 coordinates they cover. |
 | `phase1_sound` | The first phase really reaches the subgroup. |
 | `phase2_sound`, `two_phase_sound` | The second phase really solves, and the two together really solve. |
 | `solve_two_phase_sound` | Every sequence the solver returns solves the sticker cube it was given. |
-| `crun_element` | Running a sequence on any cube is composing that cube with the one the sequence denotes, so a claim about every cube becomes a claim about one. |
-| `cparity_element` | The two rearrangements of a reachable cube have even combined parity, so no sequence produces a cube with exactly two pieces exchanged. |
+| `run_cube_element` | Running a sequence on any cube is composing that cube with the one the sequence denotes, so a claim about every cube becomes a claim about one. |
+| `cube_parity_element` | The two rearrangements of a reachable cube have even combined parity, so no sequence produces a cube with exactly two pieces exchanged. |
 | `full_solution` | Every solvable cube has a solution of at most 372 moves. |
 | `subgroup_solution` | Every solvable cube in the subgroup has one of at most 200 using only the ten allowed moves. |
 | `normalise_cube`, `normalise_phase2` | Every sequence is matched by one the pruning keeps that is no longer, so pruning throws nothing away. |

@@ -11,19 +11,19 @@ Import ListNotations.
     brings that piece home without disturbing the solved ones" quantifies over
     every cube it might be applied to, which no computation can check. Composed
     the other way it becomes a claim about the single cube the sequence denotes,
-    which is one computation. [crun_element] below is that change of view. *)
+    which is one computation. [run_cube_element] below is that change of view. *)
 
 (** * Reading a slot by name *)
 
 (** The piece in a named corner slot, and in a named edge slot. *)
-Definition getc (c : cube) (X : corner) : cslot :=
+Definition read_corner (c : cube) (X : corner) : corner_slot :=
   match X with
   | URF => xURF c | UFL => xUFL c | ULB => xULB c | UBR => xUBR c
   | DFR => xDFR c | DLF => xDLF c | DBL => xDBL c | DRB => xDRB c
   end.
 
 (** And the piece in a named edge slot. *)
-Definition gete (c : cube) (Y : edge) : eslot :=
+Definition read_edge (c : cube) (Y : edge) : edge_slot :=
   match Y with
   | UR => yUR c | UF => yUF c | UL => yUL c | UB => yUB c
   | DR => yDR c | DF => yDF c | DL => yDL c | DB => yDB c
@@ -32,16 +32,16 @@ Definition gete (c : cube) (Y : edge) : eslot :=
 
 (** A cube is exactly its twenty slot readings. *)
 Lemma cube_eta c :
-  c = Cube (getc c URF) (getc c UFL) (getc c ULB) (getc c UBR)
-           (getc c DFR) (getc c DLF) (getc c DBL) (getc c DRB)
-           (gete c UR) (gete c UF) (gete c UL) (gete c UB)
-           (gete c DR) (gete c DF) (gete c DL) (gete c DB)
-           (gete c FR) (gete c FL) (gete c BL) (gete c BR).
+  c = Cube (read_corner c URF) (read_corner c UFL) (read_corner c ULB) (read_corner c UBR)
+           (read_corner c DFR) (read_corner c DLF) (read_corner c DBL) (read_corner c DRB)
+           (read_edge c UR) (read_edge c UF) (read_edge c UL) (read_edge c UB)
+           (read_edge c DR) (read_edge c DF) (read_edge c DL) (read_edge c DB)
+           (read_edge c FR) (read_edge c FL) (read_edge c BL) (read_edge c BR).
 Proof. destruct c; reflexivity. Qed.
 
 (** So an equation between cubes can be proved one slot at a time. *)
 Lemma cube_ext x y :
-  (forall X, getc x X = getc y X) -> (forall Y, gete x Y = gete y Y) -> x = y.
+  (forall X, read_corner x X = read_corner y X) -> (forall Y, read_edge x Y = read_edge y Y) -> x = y.
 Proof.
   intros Hc He; rewrite (cube_eta x), (cube_eta y),
     (Hc URF), (Hc UFL), (Hc ULB), (Hc UBR),
@@ -55,95 +55,95 @@ Qed.
 
 (** Follow one slot reading through a cube: the entry says which piece to look
     up and how much further to rotate what is found. *)
-Definition capply (c : cube) (x : cslot) : cslot :=
-  let (X, t) := x in cshift t (getc c X).
+Definition follow_corner (c : cube) (x : corner_slot) : corner_slot :=
+  let (X, t) := x in shift_corner t (read_corner c X).
 
 (** And the same for an edge reading. *)
-Definition eapply (c : cube) (y : eslot) : eslot :=
-  let (Y, f) := y in eshift f (gete c Y).
+Definition follow_edge (c : cube) (y : edge_slot) : edge_slot :=
+  let (Y, f) := y in shift_edge f (read_edge c Y).
 
 (** Applying the rearrangement [g] to the cube [c]. Every slot of the result
     reads the slot of [c] that [g] says feeds it. *)
-Definition ccompose (c g : cube) : cube :=
-  Cube (capply c (xURF g)) (capply c (xUFL g)) (capply c (xULB g))
-       (capply c (xUBR g)) (capply c (xDFR g)) (capply c (xDLF g))
-       (capply c (xDBL g)) (capply c (xDRB g))
-       (eapply c (yUR g)) (eapply c (yUF g)) (eapply c (yUL g))
-       (eapply c (yUB g)) (eapply c (yDR g)) (eapply c (yDF g))
-       (eapply c (yDL g)) (eapply c (yDB g)) (eapply c (yFR g))
-       (eapply c (yFL g)) (eapply c (yBL g)) (eapply c (yBR g)).
+Definition compose (c g : cube) : cube :=
+  Cube (follow_corner c (xURF g)) (follow_corner c (xUFL g)) (follow_corner c (xULB g))
+       (follow_corner c (xUBR g)) (follow_corner c (xDFR g)) (follow_corner c (xDLF g))
+       (follow_corner c (xDBL g)) (follow_corner c (xDRB g))
+       (follow_edge c (yUR g)) (follow_edge c (yUF g)) (follow_edge c (yUL g))
+       (follow_edge c (yUB g)) (follow_edge c (yDR g)) (follow_edge c (yDF g))
+       (follow_edge c (yDL g)) (follow_edge c (yDB g)) (follow_edge c (yFR g))
+       (follow_edge c (yFL g)) (follow_edge c (yBL g)) (follow_edge c (yBR g)).
 
 (** A corner slot of a composition reads what the right cube says to read, *)
-Lemma getc_ccompose c g X : getc (ccompose c g) X = capply c (getc g X).
+Lemma read_corner_compose c g X : read_corner (compose c g) X = follow_corner c (read_corner g X).
 Proof. destruct X; reflexivity. Qed.
 
 (** and the same for an edge slot. *)
-Lemma gete_ccompose c g Y : gete (ccompose c g) Y = eapply c (gete g Y).
+Lemma read_edge_compose c g Y : read_edge (compose c g) Y = follow_edge c (read_edge g Y).
 Proof. destruct Y; reflexivity. Qed.
 
 (** Reading a slot of the solved cube gives that slot's own piece, unturned. *)
-Lemma getc_csolved X : getc csolved X = (X, T0).
+Lemma read_corner_solved_cube X : read_corner solved_cube X = (X, T0).
 Proof. destruct X; reflexivity. Qed.
 
 (** and an edge slot its own piece, unflipped. *)
-Lemma gete_csolved Y : gete csolved Y = (Y, F0).
+Lemma read_edge_solved_cube Y : read_edge solved_cube Y = (Y, F0).
 Proof. destruct Y; reflexivity. Qed.
 
 (** The solved cube is the identity on both sides. *)
-Lemma ccompose_id_r c : ccompose c csolved = c.
+Lemma compose_id_r c : compose c solved_cube = c.
 Proof.
-  apply cube_ext; intros; rewrite ?getc_ccompose, ?gete_ccompose,
-    ?getc_csolved, ?gete_csolved; reflexivity.
+  apply cube_ext; intros; rewrite ?read_corner_compose, ?read_edge_compose,
+    ?read_corner_solved_cube, ?read_edge_solved_cube; reflexivity.
 Qed.
 
 (** And on the left. *)
-Lemma ccompose_id_l g : ccompose csolved g = g.
+Lemma compose_id_l g : compose solved_cube g = g.
 Proof.
-  apply cube_ext; intro X; rewrite ?getc_ccompose, ?gete_ccompose.
-  - destruct (getc g X) as [P t]; cbn; rewrite getc_csolved;
+  apply cube_ext; intro X; rewrite ?read_corner_compose, ?read_edge_compose.
+  - destruct (read_corner g X) as [P t]; cbn; rewrite read_corner_solved_cube;
       destruct t, P; reflexivity.
-  - destruct (gete g X) as [P f]; cbn; rewrite gete_csolved;
+  - destruct (read_edge g X) as [P f]; cbn; rewrite read_edge_solved_cube;
       destruct f, P; reflexivity.
 Qed.
 
 (** Rotating a slot reading further commutes with following it through a
     cube, which is what makes composition associative. *)
-Lemma capply_shift c k x : capply c (cshift k x) = cshift k (capply c x).
+Lemma follow_corner_shift c k x : follow_corner c (shift_corner k x) = shift_corner k (follow_corner c x).
 Proof.
   destruct x as [X t]; destruct k, t; simpl;
-    destruct (getc c X) as [P u]; destruct u; reflexivity.
+    destruct (read_corner c X) as [P u]; destruct u; reflexivity.
 Qed.
 
 (** And the same for an edge reading. *)
-Lemma eapply_shift c k y : eapply c (eshift k y) = eshift k (eapply c y).
+Lemma follow_edge_shift c k y : follow_edge c (shift_edge k y) = shift_edge k (follow_edge c y).
 Proof.
   destruct y as [Y f]; destruct k, f; simpl;
-    destruct (gete c Y) as [P u]; destruct u; reflexivity.
+    destruct (read_edge c Y) as [P u]; destruct u; reflexivity.
 Qed.
 
 (** Following a reading through a composition is following it through each in
     turn, which is what makes composition associative. *)
-Lemma capply_ccompose a b x : capply (ccompose a b) x = capply a (capply b x).
+Lemma follow_corner_compose a b x : follow_corner (compose a b) x = follow_corner a (follow_corner b x).
 Proof.
-  destruct x as [X t]; cbn [capply]; rewrite getc_ccompose.
-  symmetry; apply capply_shift.
+  destruct x as [X t]; cbn [follow_corner]; rewrite read_corner_compose.
+  symmetry; apply follow_corner_shift.
 Qed.
 
 (** The same for an edge reading. *)
-Lemma eapply_ccompose a b y : eapply (ccompose a b) y = eapply a (eapply b y).
+Lemma follow_edge_compose a b y : follow_edge (compose a b) y = follow_edge a (follow_edge b y).
 Proof.
-  destruct y as [Y f]; cbn [eapply]; rewrite gete_ccompose.
-  symmetry; apply eapply_shift.
+  destruct y as [Y f]; cbn [follow_edge]; rewrite read_edge_compose.
+  symmetry; apply follow_edge_shift.
 Qed.
 
 (** Composition is associative, so a sequence of rearrangements can be folded
     in either direction. *)
-Lemma ccompose_assoc a b g :
-  ccompose (ccompose a b) g = ccompose a (ccompose b g).
+Lemma compose_assoc a b g :
+  compose (compose a b) g = compose a (compose b g).
 Proof.
   apply cube_ext; intro X;
-    rewrite ?getc_ccompose, ?gete_ccompose;
-    [apply capply_ccompose | apply eapply_ccompose].
+    rewrite ?read_corner_compose, ?read_edge_compose;
+    [apply follow_corner_compose | apply follow_edge_compose].
 Qed.
 
 (** * Turning is composing
@@ -151,34 +151,34 @@ Qed.
     A quarter turn rearranges the slots the same way whatever sits in them, so
     turning a cube is composing it with the cube that one turn produces from
     solved. *)
-Lemma cquarter_element f d : cquarter f d = ccompose d (cquarter f csolved).
+Lemma quarter_cube_element f d : quarter_cube f d = compose d (quarter_cube f solved_cube).
 Proof. destruct_cube d; destruct f; reflexivity. Qed.
 
 (** The same for a whole move. *)
-Lemma cturn_element m d : cturn m d = ccompose d (cturn m csolved).
+Lemma turn_cube_element m d : turn_cube m d = compose d (turn_cube m solved_cube).
 Proof.
-  destruct m as [f t]; destruct t; cbn [cturn].
-  - apply cquarter_element.
-  - rewrite (cquarter_element f (cquarter f d)), (cquarter_element f d),
-      (cquarter_element f (cquarter f csolved)), ccompose_assoc; reflexivity.
-  - rewrite (cquarter_element f (cquarter f (cquarter f d))),
-      (cquarter_element f (cquarter f d)), (cquarter_element f d),
-      (cquarter_element f (cquarter f (cquarter f csolved))),
-      (cquarter_element f (cquarter f csolved)),
-      !ccompose_assoc; reflexivity.
+  destruct m as [f t]; destruct t; cbn [turn_cube].
+  - apply quarter_cube_element.
+  - rewrite (quarter_cube_element f (quarter_cube f d)), (quarter_cube_element f d),
+      (quarter_cube_element f (quarter_cube f solved_cube)), compose_assoc; reflexivity.
+  - rewrite (quarter_cube_element f (quarter_cube f (quarter_cube f d))),
+      (quarter_cube_element f (quarter_cube f d)), (quarter_cube_element f d),
+      (quarter_cube_element f (quarter_cube f (quarter_cube f solved_cube))),
+      (quarter_cube_element f (quarter_cube f solved_cube)),
+      !compose_assoc; reflexivity.
 Qed.
 
 (** And for a whole sequence. Running a sequence on any cube is composing that
     cube with the single cube the sequence denotes, so a claim about every
     cube a sequence might meet becomes a claim about one cube. *)
-Theorem crun_element c p : crun c p = ccompose c (crun csolved p).
+Theorem run_cube_element c p : run_cube c p = compose c (run_cube solved_cube p).
 Proof.
   revert c; induction p as [| m p IH]; intro c;
-    [symmetry; apply ccompose_id_r |].
-  change (crun c (m :: p)) with (crun (cturn m c) p).
-  change (crun csolved (m :: p)) with (crun (cturn m csolved) p).
-  rewrite (IH (cturn m c)), (IH (cturn m csolved)),
-    (cturn_element m c), ccompose_assoc; reflexivity.
+    [symmetry; apply compose_id_r |].
+  change (run_cube c (m :: p)) with (run_cube (turn_cube m c) p).
+  change (run_cube solved_cube (m :: p)) with (run_cube (turn_cube m solved_cube) p).
+  rewrite (IH (turn_cube m c)), (IH (turn_cube m solved_cube)),
+    (turn_cube_element m c), compose_assoc; reflexivity.
 Qed.
 
 (** * Sequences as group elements
@@ -188,27 +188,27 @@ Qed.
     questions about cubes. *)
 
 (** The cube a sequence denotes. *)
-Definition element (p : list move) : cube := crun csolved p.
+Definition element (p : list move) : cube := run_cube solved_cube p.
 
 (** Concatenation composes. *)
-Lemma element_app p q : element (p ++ q) = ccompose (element p) (element q).
-Proof. unfold element; rewrite crun_app; apply crun_element. Qed.
+Lemma element_app p q : element (p ++ q) = compose (element p) (element q).
+Proof. unfold element; rewrite run_cube_app; apply run_cube_element. Qed.
 
 (** The empty sequence denotes the solved cube. *)
-Lemma element_nil : element [] = csolved.
+Lemma element_nil : element [] = solved_cube.
 Proof. reflexivity. Qed.
 
 (** Running a sequence is composing with what it denotes. *)
-Lemma crun_by_element c p : crun c p = ccompose c (element p).
-Proof. apply crun_element. Qed.
+Lemma run_cube_by_element c p : run_cube c p = compose c (element p).
+Proof. apply run_cube_element. Qed.
 
 (** Undoing a sequence composes to the solved cube on both sides, so the
     reversed sequence denotes an inverse. *)
 Lemma element_inverse_r p :
-  ccompose (element p) (element (inverse_path p)) = csolved.
+  compose (element p) (element (inverse_path p)) = solved_cube.
 Proof.
-  rewrite <- element_app; unfold element; rewrite crun_app;
-    apply crun_inverse_path.
+  rewrite <- element_app; unfold element; rewrite run_cube_app;
+    apply run_cube_inverse_path.
 Qed.
 
 (** * Leaving a piece alone
@@ -218,25 +218,25 @@ Qed.
     checked by computing. *)
 
 (** The pieces a rearrangement leaves exactly where they belong. *)
-Definition fixesc (g : cube) (P : corner) : Prop := getc g P = (P, T0).
+Definition fixes_corner (g : cube) (P : corner) : Prop := read_corner g P = (P, T0).
 
 (** And the edge pieces. *)
-Definition fixese (g : cube) (P : edge) : Prop := gete g P = (P, F0).
+Definition fixes_edge (g : cube) (P : edge) : Prop := read_edge g P = (P, F0).
 
 (** Composing on the left leaves such a slot reading alone, whatever it was. *)
-Lemma capply_fixesc g P t : fixesc g P -> capply g (P, t) = (P, t).
-Proof. unfold fixesc; intro H; cbn [capply]; rewrite H; destruct t; reflexivity. Qed.
+Lemma follow_corner_fixed g P t : fixes_corner g P -> follow_corner g (P, t) = (P, t).
+Proof. unfold fixes_corner; intro H; cbn [follow_corner]; rewrite H; destruct t; reflexivity. Qed.
 
 (** The same for an edge reading. *)
-Lemma eapply_fixese g P f : fixese g P -> eapply g (P, f) = (P, f).
-Proof. unfold fixese; intro H; cbn [eapply]; rewrite H; destruct f; reflexivity. Qed.
+Lemma follow_edge_fixed g P f : fixes_edge g P -> follow_edge g (P, f) = (P, f).
+Proof. unfold fixes_edge; intro H; cbn [follow_edge]; rewrite H; destruct f; reflexivity. Qed.
 
 (** A cube that can be solved is itself the cube of some sequence: undo the
     solution and the solved cube runs to it. *)
-Lemma csolvable_element c : csolvable c -> exists r, element r = c.
+Lemma solvable_element c : solvable c -> exists r, element r = c.
 Proof.
   intros [p Hp]; exists (inverse_path p).
-  rewrite crun_by_element in Hp.
-  symmetry; rewrite <- (ccompose_id_r c), <- (element_inverse_r p),
-    <- ccompose_assoc, Hp; apply ccompose_id_l.
+  rewrite run_cube_by_element in Hp.
+  symmetry; rewrite <- (compose_id_r c), <- (element_inverse_r p),
+    <- compose_assoc, Hp; apply compose_id_l.
 Qed.

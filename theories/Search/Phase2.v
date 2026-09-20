@@ -30,22 +30,22 @@ Definition allowed_moves2 (prev : option move) : list move :=
 (** Take the first move that solves the cube within the remaining depth. *)
 Fixpoint search2 (T : tables2) (d : nat) (prev : option move) (c : cube)
   : option (list move) :=
-  if cube_eqb c csolved then Some []
+  if cube_eqb c solved_cube then Some []
   else
     match d with
     | 0 => None
     | S d' =>
         if Nat.leb (estimate2 T c) d then
-          choose_move (fun m => search2 T d' (Some m) (cturn m c)) (allowed_moves2 prev)
+          choose_move (fun m => search2 T d' (Some m) (turn_cube m c)) (allowed_moves2 prev)
         else None
     end.
 
 (** Anything the second phase returns really solves the cube. *)
 Theorem search2_sound T d prev c p :
-  search2 T d prev c = Some p -> crun c p = csolved /\ length p <= d.
+  search2 T d prev c = Some p -> run_cube c p = solved_cube /\ length p <= d.
 Proof.
   revert prev c p; induction d as [| d IH]; intros prev c p; cbn [search2];
-    destruct (cube_eqb c csolved) eqn:E.
+    destruct (cube_eqb c solved_cube) eqn:E.
   - intro H; inversion H; subst; simpl;
       split; [apply cube_eqb_spec; auto | auto].
   - discriminate.
@@ -74,7 +74,7 @@ Definition phase2 (T : tables2) (limit : nat) (c : cube) : option (list move) :=
   deepen2 T limit 0 c.
 
 (** Whatever it returns really solves the cube it was given. *)
-Theorem phase2_sound T limit c p : phase2 T limit c = Some p -> crun c p = csolved.
+Theorem phase2_sound T limit c p : phase2 T limit c = Some p -> run_cube c p = solved_cube.
 Proof.
   unfold phase2; generalize 0 as d; revert p.
   induction limit as [| limit IH]; intros p d; cbn [deepen2];
@@ -98,9 +98,9 @@ Proof.
 Qed.
 
 (** Two half turns of a face undo each other. *)
-Lemma half_turn_involutive f c : cturn (f, Half) (cturn (f, Half) c) = c.
+Lemma half_turn_involutive f c : turn_cube (f, Half) (turn_cube (f, Half) c) = c.
 Proof.
-  apply paint_inj; rewrite !paint_cturn; unfold_moves; apply quarter_four.
+  apply paint_inj; rewrite !paint_turn_cube; unfold_moves; apply quarter_four.
 Qed.
 
 (** Merging two allowed turns of one face yields an allowed turn, or nothing:
@@ -108,15 +108,15 @@ Qed.
     which is its own inverse. *)
 Lemma phase2_move_merge f t1 t2 :
   phase2_move (f, t1) = true -> phase2_move (f, t2) = true ->
-  (forall c, cturn (f, t2) (cturn (f, t1) c) = c) \/
+  (forall c, turn_cube (f, t2) (turn_cube (f, t1) c) = c) \/
   (exists t3, phase2_move (f, t3) = true /\
-     forall c, cturn (f, t2) (cturn (f, t1) c) = cturn (f, t3) c).
+     forall c, turn_cube (f, t2) (turn_cube (f, t1) c) = turn_cube (f, t3) c).
 Proof.
   assert (free : forall f, (f = Up \/ f = Down) ->
-    (forall c, cturn (f, t2) (cturn (f, t1) c) = c) \/
+    (forall c, turn_cube (f, t2) (turn_cube (f, t1) c) = c) \/
     (exists t3, phase2_move (f, t3) = true /\
-       forall c, cturn (f, t2) (cturn (f, t1) c) = cturn (f, t3) c)).
-  { intros g Hg; destruct (csame_face_merge g t1 t2) as [H | [t3 H]];
+       forall c, turn_cube (f, t2) (turn_cube (f, t1) c) = turn_cube (f, t3) c)).
+  { intros g Hg; destruct (same_face_merge_cube g t1 t2) as [H | [t3 H]];
       [left; exact H |].
     right; exists t3; split; [| exact H].
     destruct Hg as [-> | ->]; destruct t3; reflexivity. }
@@ -129,117 +129,117 @@ Qed.
 Lemma normalise_phase2 p :
   Forall (fun m => phase2_move m = true) p ->
   exists q, canonical None q /\ Forall (fun m => phase2_move m = true) q /\
-    (forall c, crun c q = crun c p) /\ length q <= length p.
+    (forall c, run_cube c q = run_cube c p) /\ length q <= length p.
 Proof.
-  apply (canonical_exists cube cturn phase2_move
+  apply (canonical_exists cube turn_cube phase2_move
            (fun f t1 t2 H1 H2 => phase2_move_merge f t1 t2 H1 H2)
-           (fun f g t1 t2 Hop c => cmove_comm f g t1 t2 c Hop)).
+           (fun f g t1 t2 Hop c => move_comm_cube f g t1 t2 c Hop)).
 Qed.
 
 (** A move rearranges the corners, whatever else it does. *)
-Lemma corner_pieces_perm m c : Permutation (corner_pieces c) (corner_pieces (cturn m c)).
+Lemma corner_pieces_perm m c : Permutation (corner_pieces c) (corner_pieces (turn_cube m c)).
 Proof.
   destruct_cube c; destruct m as [f t]; destruct f, t;
-    unfold corner_pieces; cbn [corner_slots cturn cquarter
+    unfold corner_pieces; cbn [corner_slots turn_cube quarter_cube
       xURF xUFL xULB xUBR xDFR xDLF xDBL xDRB map];
-    rewrite ?cshift_fst; cbn [fst];
+    rewrite ?shift_corner_fst; cbn [fst];
     apply (Permutation_count_occ corner_eq_dec); intro x; cbn;
     repeat (destruct (corner_eq_dec _ x)); lia.
 Qed.
 
 (** An allowed move rearranges each group of edges within itself. *)
 Lemma ud_pieces_perm m c :
-  phase2_move m = true -> Permutation (ud_pieces c) (ud_pieces (cturn m c)).
+  phase2_move m = true -> Permutation (ud_pieces c) (ud_pieces (turn_cube m c)).
 Proof.
   destruct_cube c; destruct m as [f t]; destruct f, t; try discriminate; intros _;
-    unfold ud_pieces, edge_pieces; cbn [edge_slots cturn cquarter
+    unfold ud_pieces, edge_pieces; cbn [edge_slots turn_cube quarter_cube
       yUR yUF yUL yUB yDR yDF yDL yDB yFR yFL yBL yBR map firstn];
-    rewrite ?eshift_fst; cbn [fst];
+    rewrite ?shift_edge_fst; cbn [fst];
     apply (Permutation_count_occ edge_eq_dec); intro x; cbn;
     repeat (destruct (edge_eq_dec _ x)); lia.
 Qed.
 
 (** and the slice edges within the slice. *)
 Lemma slice_pieces_perm m c :
-  phase2_move m = true -> Permutation (slice_pieces c) (slice_pieces (cturn m c)).
+  phase2_move m = true -> Permutation (slice_pieces c) (slice_pieces (turn_cube m c)).
 Proof.
   destruct_cube c; destruct m as [f t]; destruct f, t; try discriminate; intros _;
-    unfold slice_pieces, edge_pieces; cbn [edge_slots cturn cquarter
+    unfold slice_pieces, edge_pieces; cbn [edge_slots turn_cube quarter_cube
       yUR yUF yUL yUB yDR yDF yDL yDB yFR yFL yBL yBR map skipn];
-    rewrite ?eshift_fst; cbn [fst];
+    rewrite ?shift_edge_fst; cbn [fst];
     apply (Permutation_count_occ edge_eq_dec); intro x; cbn;
     repeat (destruct (edge_eq_dec _ x)); lia.
 Qed.
 
 (** So a whole sequence rearranges them, and a cube that can be solved sits in
     the space of rearrangements its coordinate tables were built over. *)
-Lemma corner_pieces_crun_perm c q :
-  Permutation (corner_pieces c) (corner_pieces (crun c q)).
+Lemma corner_pieces_run_cube_perm c q :
+  Permutation (corner_pieces c) (corner_pieces (run_cube c q)).
 Proof.
   revert c; induction q as [| m q IH]; intro c; [apply Permutation_refl |].
-  apply perm_trans with (corner_pieces (cturn m c)); [apply corner_pieces_perm | apply IH].
+  apply perm_trans with (corner_pieces (turn_cube m c)); [apply corner_pieces_perm | apply IH].
 Qed.
 
 (** The same for the outer edges, *)
-Lemma ud_pieces_crun_perm c q :
+Lemma ud_pieces_run_cube_perm c q :
   Forall (fun m => phase2_move m = true) q ->
-  Permutation (ud_pieces c) (ud_pieces (crun c q)).
+  Permutation (ud_pieces c) (ud_pieces (run_cube c q)).
 Proof.
   revert c; induction q as [| m q IH]; intros c H; [apply Permutation_refl |].
-  inversion H; subst; apply perm_trans with (ud_pieces (cturn m c));
+  inversion H; subst; apply perm_trans with (ud_pieces (turn_cube m c));
     [apply ud_pieces_perm; auto | apply IH; auto].
 Qed.
 
 (** and for the slice edges. *)
-Lemma slice_pieces_crun_perm c q :
+Lemma slice_pieces_run_cube_perm c q :
   Forall (fun m => phase2_move m = true) q ->
-  Permutation (slice_pieces c) (slice_pieces (crun c q)).
+  Permutation (slice_pieces c) (slice_pieces (run_cube c q)).
 Proof.
   revert c; induction q as [| m q IH]; intros c H; [apply Permutation_refl |].
-  inversion H; subst; apply perm_trans with (slice_pieces (cturn m c));
+  inversion H; subst; apply perm_trans with (slice_pieces (turn_cube m c));
     [apply slice_pieces_perm; auto | apply IH; auto].
 Qed.
 
 (** A sequence that solves the cube is, read one coordinate at a time, a path
     of the same length to that coordinate's goal. *)
 Lemma cornerperm_reaches c q :
-  Forall (fun m => phase2_move m = true) q -> crun c q = csolved ->
+  Forall (fun m => phase2_move m = true) q -> run_cube c q = solved_cube ->
   reaches cornerperm_step cornerperm_goal (length q) (corner_pieces c).
 Proof.
   revert c; induction q as [| m q IH]; intros c Hf H;
-    unfold crun in H; cbn [fold_left] in H; simpl.
+    unfold run_cube in H; cbn [fold_left] in H; simpl.
   - apply reaches_goal; rewrite H; reflexivity.
-  - inversion Hf; subst; apply reaches_step with (corner_pieces (cturn m c));
+  - inversion Hf; subst; apply reaches_step with (corner_pieces (turn_cube m c));
       [| apply IH; auto].
-    rewrite corner_pieces_cturn; apply in_map_iff;
+    rewrite corner_pieces_turn_cube; apply in_map_iff;
       exists m; split; [reflexivity | apply phase2_moves_complete; auto].
 Qed.
 
 (** The same for the outer edge placement, *)
 Lemma udperm_reaches c q :
-  Forall (fun m => phase2_move m = true) q -> crun c q = csolved ->
+  Forall (fun m => phase2_move m = true) q -> run_cube c q = solved_cube ->
   reaches udperm_step udperm_goal (length q) (ud_pieces c).
 Proof.
   revert c; induction q as [| m q IH]; intros c Hf H;
-    unfold crun in H; cbn [fold_left] in H; simpl.
+    unfold run_cube in H; cbn [fold_left] in H; simpl.
   - apply reaches_goal; rewrite H; reflexivity.
-  - inversion Hf; subst; apply reaches_step with (ud_pieces (cturn m c));
+  - inversion Hf; subst; apply reaches_step with (ud_pieces (turn_cube m c));
       [| apply IH; auto].
-    rewrite ud_pieces_cturn by auto; apply in_map_iff;
+    rewrite ud_pieces_turn_cube by auto; apply in_map_iff;
       exists m; split; [reflexivity | apply phase2_moves_complete; auto].
 Qed.
 
 (** and for the slice placement. *)
 Lemma sliceperm_reaches c q :
-  Forall (fun m => phase2_move m = true) q -> crun c q = csolved ->
+  Forall (fun m => phase2_move m = true) q -> run_cube c q = solved_cube ->
   reaches sliceperm_step sliceperm_goal (length q) (slice_pieces c).
 Proof.
   revert c; induction q as [| m q IH]; intros c Hf H;
-    unfold crun in H; cbn [fold_left] in H; simpl.
+    unfold run_cube in H; cbn [fold_left] in H; simpl.
   - apply reaches_goal; rewrite H; reflexivity.
-  - inversion Hf; subst; apply reaches_step with (slice_pieces (cturn m c));
+  - inversion Hf; subst; apply reaches_step with (slice_pieces (turn_cube m c));
       [| apply IH; auto].
-    rewrite slice_pieces_cturn by auto; apply in_map_iff;
+    rewrite slice_pieces_turn_cube by auto; apply in_map_iff;
       exists m; split; [reflexivity | apply phase2_moves_complete; auto].
 Qed.
 
@@ -277,7 +277,7 @@ Qed.
 (** So the tables never overestimate how far the cube still has to go. *)
 Theorem estimate2_admissible u c q :
   Forall (fun m => phase2_move m = true) q ->
-  crun c q = csolved -> estimate2 (build_tables2 u) c <= length q.
+  run_cube c q = solved_cube -> estimate2 (build_tables2 u) c <= length q.
 Proof.
   intros Hf H; unfold estimate2, build_tables2;
     cbn [t_cornerperm t_udperm t_sliceperm].
@@ -285,32 +285,32 @@ Proof.
   apply Nat.max_lub; [| apply Nat.max_lub].
   - apply cornerperm_safe; [| apply cornerperm_reaches; auto].
     apply perms_complete, Permutation_sym.
-    replace all_corners with (corner_pieces (crun c q)) by (rewrite H; reflexivity).
-    apply corner_pieces_crun_perm.
+    replace all_corners with (corner_pieces (run_cube c q)) by (rewrite H; reflexivity).
+    apply corner_pieces_run_cube_perm.
   - apply udperm_safe; [| apply udperm_reaches; auto].
     apply perms_complete, Permutation_sym.
-    replace ud_edges with (ud_pieces (crun c q)) by (rewrite H; reflexivity).
-    apply ud_pieces_crun_perm; auto.
+    replace ud_edges with (ud_pieces (run_cube c q)) by (rewrite H; reflexivity).
+    apply ud_pieces_run_cube_perm; auto.
   - apply sliceperm_safe; [| apply sliceperm_reaches; auto].
     apply perms_complete, Permutation_sym.
-    replace slice_edges with (slice_pieces (crun c q)) by (rewrite H; reflexivity).
-    apply slice_pieces_crun_perm; auto.
+    replace slice_edges with (slice_pieces (run_cube c q)) by (rewrite H; reflexivity).
+    apply slice_pieces_run_cube_perm; auto.
 Qed.
 
 (** The second phase returns whenever some canonical sequence of allowed moves
     of the allowed length solves the cube. *)
 Lemma search2_complete T :
   (forall c q, Forall (fun m => phase2_move m = true) q ->
-     crun c q = csolved -> estimate2 T c <= length q) ->
+     run_cube c q = solved_cube -> estimate2 T c <= length q) ->
   forall d prev c q, canonical prev q ->
     Forall (fun m => phase2_move m = true) q ->
-    crun c q = csolved -> length q <= d ->
+    run_cube c q = solved_cube -> length q <= d ->
   exists p, search2 T d prev c = Some p.
 Proof.
   intro Hadm; induction d as [| d IH]; intros prev c q Hc Hf H Hl; cbn [search2];
-    destruct (cube_eqb c csolved) eqn:E; try (exists []; reflexivity);
+    destruct (cube_eqb c solved_cube) eqn:E; try (exists []; reflexivity);
     destruct q as [| m q];
-    try (exfalso; unfold crun in H; cbn [fold_left] in H;
+    try (exfalso; unfold run_cube in H; cbn [fold_left] in H;
          apply cube_eqb_spec in H; congruence).
   - simpl in Hl; lia.
   - simpl in Hl; apply le_S_n in Hl; destruct Hc as [Ha Hc].
@@ -319,7 +319,7 @@ Proof.
       [| symmetry; apply Nat.leb_le;
          apply Nat.le_trans with (length (m :: q));
          [apply Hadm; auto | simpl; lia]].
-    destruct (IH (Some m) (cturn m c) q Hc ltac:(auto) H Hl) as [p Hp].
+    destruct (IH (Some m) (turn_cube m c) q Hc ltac:(auto) H Hl) as [p Hp].
     apply (choose_move_complete _ _ m p); [| exact Hp].
     unfold allowed_moves2; apply filter_In; split;
       [apply phase2_moves_complete; auto | exact Ha].
@@ -341,8 +341,8 @@ Qed.
     moves within the limit it was given. *)
 Theorem phase2_complete T limit c q :
   (forall c' q', Forall (fun m => phase2_move m = true) q' ->
-     crun c' q' = csolved -> estimate2 T c' <= length q') ->
-  Forall (fun m => phase2_move m = true) q -> crun c q = csolved ->
+     run_cube c' q' = solved_cube -> estimate2 T c' <= length q') ->
+  Forall (fun m => phase2_move m = true) q -> run_cube c q = solved_cube ->
   length q <= limit -> exists p, phase2 T limit c = Some p.
 Proof.
   intros Hadm Hf H Hl; destruct (normalise_phase2 q Hf) as [r [Hc [Hfr [Hr Hlr]]]].

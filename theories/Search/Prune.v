@@ -189,16 +189,16 @@ Variable act : move -> A -> A.
 
 (** The moves a caller is willing to use. The first phase allows all of them;
     the second allows ten, and the rewriting has to stay inside that ten. *)
-Variable ok : move -> bool.
+Variable usable : move -> bool.
 
 (** Running a sequence left to right. *)
 Definition act_run (a : A) (p : list move) : A := fold_left (fun a m => act m a) p a.
 
 (** Two turns of one face are one turn of that face, or nothing at all. *)
 Hypothesis merge : forall f t1 t2,
-  ok (f, t1) = true -> ok (f, t2) = true ->
+  usable (f, t1) = true -> usable (f, t2) = true ->
   (forall a, act (f, t2) (act (f, t1) a) = a) \/
-  (exists t3, ok (f, t3) = true /\
+  (exists t3, usable (f, t3) = true /\
      forall a, act (f, t2) (act (f, t1) a) = act (f, t3) a).
 
 (** Turns of opposite faces commute. *)
@@ -222,8 +222,8 @@ Qed.
 (** Every sequence has a canonical one that is no longer, lands in the same
     place, and uses only moves the caller allows. *)
 Lemma normalise : forall n k p, length p <= n -> weight p < k ->
-  Forall (fun m => ok m = true) p ->
-  exists q, canonical None q /\ Forall (fun m => ok m = true) q /\
+  Forall (fun m => usable m = true) p ->
+  exists q, canonical None q /\ Forall (fun m => usable m = true) q /\
     (forall a, act_run a q = act_run a p) /\ length q <= length p.
 Proof.
   induction n as [| n IHn]; intros k p Hl Hw Hok.
@@ -238,8 +238,8 @@ Proof.
         [subst p; simpl in Ab; discriminate |].
       subst p; destruct m1 as [f1 t1]; destruct m2 as [f2 t2];
         cbn [allowed fst] in Ab.
-      assert (Hx : Forall (fun m => ok m = true) x /\ ok (f1, t1) = true /\
-                   ok (f2, t2) = true /\ Forall (fun m => ok m = true) b).
+      assert (Hx : Forall (fun m => usable m = true) x /\ usable (f1, t1) = true /\
+                   usable (f2, t2) = true /\ Forall (fun m => usable m = true) b).
       { apply Forall_app in Hok as [H1 H2]; inversion H2; subst;
           match goal with H : Forall _ (_ :: b) |- _ => inversion H; subst end;
           repeat split; auto. }
@@ -282,8 +282,8 @@ Proof.
 Qed.
 
 (** Every sequence is matched by a canonical one that is no longer. *)
-Corollary canonical_exists p : Forall (fun m => ok m = true) p ->
-  exists q, canonical None q /\ Forall (fun m => ok m = true) q /\
+Corollary canonical_exists p : Forall (fun m => usable m = true) p ->
+  exists q, canonical None q /\ Forall (fun m => usable m = true) q /\
     (forall a, act_run a q = act_run a p) /\ length q <= length p.
 Proof. intro H; apply (normalise (length p) (S (weight p))); auto. Qed.
 

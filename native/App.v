@@ -552,7 +552,7 @@ Definition draw_button (cfg : config) (mx my : R) (b : button) : itree appE unit
 Definition draw (cfg : config) (a : app) (now : R) : itree appE unit :=
   let v := a_view a in
   let pending := map move_code (solution v) in
-  let st := phase_code (status v) in
+  let st := ui_state_code (status v) in
   let busy := searching v in
   p <- rl_mouse ;;
   let '(mx, my) := p in
@@ -683,7 +683,7 @@ Definition script_command (cfg : config) (a : app) (now : R)
     | 0 => Ret (4, u, bump)
     | 1 => Ret (1, u, bump)
     | 2 => Ret (21, u, bump)
-    | 3 => if Nat.eqb (phase_code (status v)) 2 then Ret (23, u, bump)
+    | 3 => if Nat.eqb (ui_state_code (status v)) 2 then Ret (23, u, bump)
            else Ret (0, u, k1)
     | 4 => if andb (state_eq (cube v) init_state)
                    (Nat.eqb (length (solution v)) 0)
@@ -713,7 +713,7 @@ Fixpoint scramble (n : nat) (v : view) : itree appE view :=
   end.
 
 (** Replace transient status while leaving the cube and undo history intact. *)
-Definition with_status (n : phase) (v : view) : view :=
+Definition with_status (n : ui_state) (v : view) : view :=
   View (cube v) (history v) [] false n.
 
 (** Abandon a search, if one is running. *)

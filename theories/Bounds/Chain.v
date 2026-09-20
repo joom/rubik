@@ -14,47 +14,47 @@ Import ListNotations.
     Nothing here knows where the tables came from. *)
 
 (** Comparing slot readings. *)
-Definition cslot_eqb (x y : cslot) : bool :=
-  if cslot_eq_dec x y then true else false.
+Definition corner_slot_eqb (x y : corner_slot) : bool :=
+  if corner_slot_eq_dec x y then true else false.
 
 (** And the same for an edge slot reading. *)
-Definition eslot_eqb (x y : eslot) : bool :=
-  if eslot_eq_dec x y then true else false.
+Definition edge_slot_eqb (x y : edge_slot) : bool :=
+  if edge_slot_eq_dec x y then true else false.
 
 (** A test that says yes really is an equality, which is what lets a table
     lookup stand in for the reading it answered. *)
-Lemma cslot_eqb_true x y : cslot_eqb x y = true -> x = y.
-Proof. unfold cslot_eqb; destruct (cslot_eq_dec x y); congruence. Qed.
+Lemma corner_slot_eqb_true x y : corner_slot_eqb x y = true -> x = y.
+Proof. unfold corner_slot_eqb; destruct (corner_slot_eq_dec x y); congruence. Qed.
 
 (** The same for an edge reading. *)
-Lemma eslot_eqb_true x y : eslot_eqb x y = true -> x = y.
-Proof. unfold eslot_eqb; destruct (eslot_eq_dec x y); congruence. Qed.
+Lemma edge_slot_eqb_true x y : edge_slot_eqb x y = true -> x = y.
+Proof. unfold edge_slot_eqb; destruct (edge_slot_eq_dec x y); congruence. Qed.
 
 (** The slots a cube already has right. *)
-Definition solvedc (d : cube) (cs : list corner) : Prop :=
-  forall X, In X cs -> getc d X = (X, T0).
+Definition corners_done (d : cube) (cs : list corner) : Prop :=
+  forall X, In X cs -> read_corner d X = (X, T0).
 
 (** And the edge slots it has right. *)
-Definition solvede (d : cube) (es : list edge) : Prop :=
-  forall Y, In Y es -> gete d Y = (Y, F0).
+Definition edges_done (d : cube) (es : list edge) : Prop :=
+  forall Y, In Y es -> read_edge d Y = (Y, F0).
 
 (** Composing on the left leaves a finished slot finished, provided the
     sequence's own cube holds that piece at home. *)
-Lemma solvedc_keep d h cs :
-  solvedc d cs -> (forall X, In X cs -> getc h X = (X, T0)) ->
-  solvedc (ccompose h d) cs.
+Lemma corners_done_keep d h cs :
+  corners_done d cs -> (forall X, In X cs -> read_corner h X = (X, T0)) ->
+  corners_done (compose h d) cs.
 Proof.
-  intros Hd Hh X HX; rewrite getc_ccompose, (Hd X HX).
-  apply capply_fixesc, Hh, HX.
+  intros Hd Hh X HX; rewrite read_corner_compose, (Hd X HX).
+  apply follow_corner_fixed, Hh, HX.
 Qed.
 
 (** The same for an edge slot. *)
-Lemma solvede_keep d h es :
-  solvede d es -> (forall Y, In Y es -> gete h Y = (Y, F0)) ->
-  solvede (ccompose h d) es.
+Lemma edges_done_keep d h es :
+  edges_done d es -> (forall Y, In Y es -> read_edge h Y = (Y, F0)) ->
+  edges_done (compose h d) es.
 Proof.
-  intros Hd Hh Y HY; rewrite gete_ccompose, (Hd Y HY).
-  apply eapply_fixese, Hh, HY.
+  intros Hd Hh Y HY; rewrite read_edge_compose, (Hd Y HY).
+  apply follow_edge_fixed, Hh, HY.
 Qed.
 
 (** * Tables
@@ -62,120 +62,120 @@ Qed.
     A table answers, for each reading a slot might show, with a sequence that
     brings that slot home without disturbing the ones already done. *)
 
-Definition ctable := list (cslot * list move).
+Definition corner_table := list (corner_slot * list move).
 
 (** And one for an edge slot. *)
-Definition etable := list (eslot * list move).
+Definition edge_table := list (edge_slot * list move).
 
 (** The sequence a table gives for a reading, or nothing if it has no entry. *)
-Fixpoint clookup (t : ctable) (v : cslot) : list move :=
+Fixpoint corner_lookup (t : corner_table) (v : corner_slot) : list move :=
   match t with
   | [] => []
-  | (u, w) :: r => if cslot_eqb u v then w else clookup r v
+  | (u, w) :: r => if corner_slot_eqb u v then w else corner_lookup r v
   end.
 
 (** The same for an edge table. *)
-Fixpoint elookup (t : etable) (v : eslot) : list move :=
+Fixpoint edge_lookup (t : edge_table) (v : edge_slot) : list move :=
   match t with
   | [] => []
-  | (u, w) :: r => if eslot_eqb u v then w else elookup r v
+  | (u, w) :: r => if edge_slot_eqb u v then w else edge_lookup r v
   end.
 
 (** Whether the table has an entry for this reading at all. *)
-Definition ccovers (t : ctable) (v : cslot) : bool :=
-  existsb (fun e => cslot_eqb (fst e) v) t.
+Definition corner_covers (t : corner_table) (v : corner_slot) : bool :=
+  existsb (fun e => corner_slot_eqb (fst e) v) t.
 
 (** The same for an edge table. *)
-Definition ecovers (t : etable) (v : eslot) : bool :=
-  existsb (fun e => eslot_eqb (fst e) v) t.
+Definition edge_covers (t : edge_table) (v : edge_slot) : bool :=
+  existsb (fun e => edge_slot_eqb (fst e) v) t.
 
 (** A reading the table covers is one of its entries, so whatever the table
     was checked for holds of the sequence looked up. *)
-Lemma clookup_in t v : ccovers t v = true -> In (v, clookup t v) t.
+Lemma corner_lookup_in t v : corner_covers t v = true -> In (v, corner_lookup t v) t.
 Proof.
-  unfold ccovers; induction t as [| [u w] t IH]; simpl; [discriminate |].
-  destruct (cslot_eqb u v) eqn:E; simpl; [intros _ | intro H].
-  - left; rewrite (cslot_eqb_true u v E); reflexivity.
+  unfold corner_covers; induction t as [| [u w] t IH]; simpl; [discriminate |].
+  destruct (corner_slot_eqb u v) eqn:E; simpl; [intros _ | intro H].
+  - left; rewrite (corner_slot_eqb_true u v E); reflexivity.
   - right; apply IH, H.
 Qed.
 
 (** The same for an edge table. *)
-Lemma elookup_in t v : ecovers t v = true -> In (v, elookup t v) t.
+Lemma edge_lookup_in t v : edge_covers t v = true -> In (v, edge_lookup t v) t.
 Proof.
-  unfold ecovers; induction t as [| [u w] t IH]; simpl; [discriminate |].
-  destruct (eslot_eqb u v) eqn:E; simpl; [intros _ | intro H].
-  - left; rewrite (eslot_eqb_true u v E); reflexivity.
+  unfold edge_covers; induction t as [| [u w] t IH]; simpl; [discriminate |].
+  destruct (edge_slot_eqb u v) eqn:E; simpl; [intros _ | intro H].
+  - left; rewrite (edge_slot_eqb_true u v E); reflexivity.
   - right; apply IH, H.
 Qed.
 
 (** What a table has to satisfy: every sequence in it leaves the finished
     slots alone and brings its own reading home. Both are computations on the
     cube the sequence denotes. *)
-Definition ctable_ok (t : ctable) (cs : list corner) (es : list edge)
+Definition corner_table_ok (t : corner_table) (cs : list corner) (es : list edge)
     (X : corner) : bool :=
   forallb (fun e =>
     let w := snd e in
-    andb (forallb (fun Y => cslot_eqb (getc (element w) Y) (Y, T0)) cs)
-    (andb (forallb (fun Y => eslot_eqb (gete (element w) Y) (Y, F0)) es)
-          (cslot_eqb (capply (element w) (fst e)) (X, T0)))) t.
+    andb (forallb (fun Y => corner_slot_eqb (read_corner (element w) Y) (Y, T0)) cs)
+    (andb (forallb (fun Y => edge_slot_eqb (read_edge (element w) Y) (Y, F0)) es)
+          (corner_slot_eqb (follow_corner (element w) (fst e)) (X, T0)))) t.
 
 (** The same conditions for a table that finishes an edge slot. *)
-Definition etable_ok (t : etable) (cs : list corner) (es : list edge)
+Definition edge_table_ok (t : edge_table) (cs : list corner) (es : list edge)
     (Y : edge) : bool :=
   forallb (fun e =>
     let w := snd e in
-    andb (forallb (fun X => cslot_eqb (getc (element w) X) (X, T0)) cs)
-    (andb (forallb (fun Z => eslot_eqb (gete (element w) Z) (Z, F0)) es)
-          (eslot_eqb (eapply (element w) (fst e)) (Y, F0)))) t.
+    andb (forallb (fun X => corner_slot_eqb (read_corner (element w) X) (X, T0)) cs)
+    (andb (forallb (fun Z => edge_slot_eqb (read_edge (element w) Z) (Z, F0)) es)
+          (edge_slot_eqb (follow_edge (element w) (fst e)) (Y, F0)))) t.
 
 (** One step of the method. *)
-Lemma cstep t cs es X d :
-  ctable_ok t cs es X = true -> ccovers t (getc d X) = true ->
-  solvedc d cs -> solvede d es ->
-  solvedc (ccompose (element (clookup t (getc d X))) d) (X :: cs) /\
-  solvede (ccompose (element (clookup t (getc d X))) d) es.
+Lemma finish_corner t cs es X d :
+  corner_table_ok t cs es X = true -> corner_covers t (read_corner d X) = true ->
+  corners_done d cs -> edges_done d es ->
+  corners_done (compose (element (corner_lookup t (read_corner d X))) d) (X :: cs) /\
+  edges_done (compose (element (corner_lookup t (read_corner d X))) d) es.
 Proof.
   intros Hok Hcov Hc He.
-  set (w := clookup t (getc d X)).
-  pose proof (clookup_in t (getc d X) Hcov) as Hin.
-  unfold ctable_ok in Hok; rewrite forallb_forall in Hok.
+  set (w := corner_lookup t (read_corner d X)).
+  pose proof (corner_lookup_in t (read_corner d X) Hcov) as Hin.
+  unfold corner_table_ok in Hok; rewrite forallb_forall in Hok.
   specialize (Hok _ Hin); cbn [fst snd] in Hok.
   apply Bool.andb_true_iff in Hok as [H1 Hok].
   apply Bool.andb_true_iff in Hok as [H2 H3].
   rewrite forallb_forall in H1, H2.
-  assert (Hfc : forall Y, In Y cs -> getc (element w) Y = (Y, T0))
-    by (intros Y HY; apply cslot_eqb_true, H1, HY).
-  assert (Hfe : forall Y, In Y es -> gete (element w) Y = (Y, F0))
-    by (intros Y HY; apply eslot_eqb_true, H2, HY).
-  split; [| apply solvede_keep; auto].
+  assert (Hfc : forall Y, In Y cs -> read_corner (element w) Y = (Y, T0))
+    by (intros Y HY; apply corner_slot_eqb_true, H1, HY).
+  assert (Hfe : forall Y, In Y es -> read_edge (element w) Y = (Y, F0))
+    by (intros Y HY; apply edge_slot_eqb_true, H2, HY).
+  split; [| apply edges_done_keep; auto].
   intros Y [<- | HY].
-  - rewrite getc_ccompose; apply cslot_eqb_true, H3.
-  - apply (solvedc_keep d (element w) cs Hc Hfc Y HY).
+  - rewrite read_corner_compose; apply corner_slot_eqb_true, H3.
+  - apply (corners_done_keep d (element w) cs Hc Hfc Y HY).
 Qed.
 
 (** And one step at an edge slot. *)
-Lemma estep t cs es Y d :
-  etable_ok t cs es Y = true -> ecovers t (gete d Y) = true ->
-  solvedc d cs -> solvede d es ->
-  solvedc (ccompose (element (elookup t (gete d Y))) d) cs /\
-  solvede (ccompose (element (elookup t (gete d Y))) d) (Y :: es).
+Lemma finish_edge t cs es Y d :
+  edge_table_ok t cs es Y = true -> edge_covers t (read_edge d Y) = true ->
+  corners_done d cs -> edges_done d es ->
+  corners_done (compose (element (edge_lookup t (read_edge d Y))) d) cs /\
+  edges_done (compose (element (edge_lookup t (read_edge d Y))) d) (Y :: es).
 Proof.
   intros Hok Hcov Hc He.
-  set (w := elookup t (gete d Y)).
-  pose proof (elookup_in t (gete d Y) Hcov) as Hin.
-  unfold etable_ok in Hok; rewrite forallb_forall in Hok.
+  set (w := edge_lookup t (read_edge d Y)).
+  pose proof (edge_lookup_in t (read_edge d Y) Hcov) as Hin.
+  unfold edge_table_ok in Hok; rewrite forallb_forall in Hok.
   specialize (Hok _ Hin); cbn [fst snd] in Hok.
   apply Bool.andb_true_iff in Hok as [H1 Hok].
   apply Bool.andb_true_iff in Hok as [H2 H3].
   rewrite forallb_forall in H1, H2.
-  assert (Hfc : forall X, In X cs -> getc (element w) X = (X, T0))
-    by (intros X HX; apply cslot_eqb_true, H1, HX).
-  assert (Hfe : forall Z, In Z es -> gete (element w) Z = (Z, F0))
-    by (intros Z HZ; apply eslot_eqb_true, H2, HZ).
-  split; [apply solvedc_keep; auto |].
+  assert (Hfc : forall X, In X cs -> read_corner (element w) X = (X, T0))
+    by (intros X HX; apply corner_slot_eqb_true, H1, HX).
+  assert (Hfe : forall Z, In Z es -> read_edge (element w) Z = (Z, F0))
+    by (intros Z HZ; apply edge_slot_eqb_true, H2, HZ).
+  split; [apply corners_done_keep; auto |].
   intros Z [<- | HZ].
-  - rewrite gete_ccompose; apply eslot_eqb_true, H3.
-  - apply (solvede_keep d (element w) es He Hfe Z HZ).
+  - rewrite read_edge_compose; apply edge_slot_eqb_true, H3.
+  - apply (edges_done_keep d (element w) es He Hfe Z HZ).
 Qed.
 
 (** * Which readings a slot can show
@@ -191,11 +191,11 @@ Lemma edge_rank_inj X Y : edge_rank X = edge_rank Y -> X = Y.
 Proof. destruct X, Y; simpl; congruence. Qed.
 
 (** Reading a corner slot is reading the piece list at that slot's rank. *)
-Lemma getc_nth d X : fst (getc d X) = nth (corner_rank X) (corner_pieces d) URF.
+Lemma read_corner_nth d X : fst (read_corner d X) = nth (corner_rank X) (corner_pieces d) URF.
 Proof. destruct X; reflexivity. Qed.
 
 (** And the same for an edge slot. *)
-Lemma gete_nth d Y : fst (gete d Y) = nth (edge_rank Y) (edge_pieces d) UR.
+Lemma read_edge_nth d Y : fst (read_edge d Y) = nth (edge_rank Y) (edge_pieces d) UR.
 Proof. destruct Y; reflexivity. Qed.
 
 (** A cube always reports eight corner pieces, *)
@@ -216,67 +216,67 @@ Proof. destruct Y; simpl; lia. Qed.
 
 (** Distinct slots of a duplicate-free cube hold distinct pieces. *)
 Lemma corner_slot_inj d X Y :
-  NoDup (cranks d) -> fst (getc d X) = fst (getc d Y) -> X = Y.
+  NoDup (corner_ranks d) -> fst (read_corner d X) = fst (read_corner d Y) -> X = Y.
 Proof.
   intros H E; apply NoDup_map_inv in H.
   rewrite NoDup_nth in H.
   apply corner_rank_inj, (H (corner_rank X) (corner_rank Y));
     [ rewrite corner_pieces_length; apply corner_rank_lt
     | rewrite corner_pieces_length; apply corner_rank_lt
-    | rewrite <- !getc_nth; exact E ].
+    | rewrite <- !read_corner_nth; exact E ].
 Qed.
 
 (** The same for edge slots. *)
 Lemma edge_slot_inj d X Y :
-  NoDup (eranks d) -> fst (gete d X) = fst (gete d Y) -> X = Y.
+  NoDup (edge_ranks d) -> fst (read_edge d X) = fst (read_edge d Y) -> X = Y.
 Proof.
   intros H E; apply NoDup_map_inv in H.
   rewrite NoDup_nth in H.
   apply edge_rank_inj, (H (edge_rank X) (edge_rank Y));
     [ rewrite edge_pieces_length; apply edge_rank_lt
     | rewrite edge_pieces_length; apply edge_rank_lt
-    | rewrite <- !gete_nth; exact E ].
+    | rewrite <- !read_edge_nth; exact E ].
 Qed.
 
 (** So an unfinished slot never shows a finished slot's piece. *)
 Lemma corner_fresh d cs X :
-  wellformed d -> solvedc d cs -> ~ In X cs -> ~ In (fst (getc d X)) cs.
+  wellformed d -> corners_done d cs -> ~ In X cs -> ~ In (fst (read_corner d X)) cs.
 Proof.
   intros [Hnd _] Hs HX Hin.
-  assert (E : fst (getc d X) = fst (getc d (fst (getc d X))))
+  assert (E : fst (read_corner d X) = fst (read_corner d (fst (read_corner d X))))
     by (rewrite (Hs _ Hin); reflexivity).
   apply HX; rewrite (corner_slot_inj d X _ Hnd E); exact Hin.
 Qed.
 
 (** And the same for edges. *)
 Lemma edge_fresh d es Y :
-  wellformed d -> solvede d es -> ~ In Y es -> ~ In (fst (gete d Y)) es.
+  wellformed d -> edges_done d es -> ~ In Y es -> ~ In (fst (read_edge d Y)) es.
 Proof.
   intros [_ Hnd] Hs HY Hin.
-  assert (E : fst (gete d Y) = fst (gete d (fst (gete d Y))))
+  assert (E : fst (read_edge d Y) = fst (read_edge d (fst (read_edge d Y))))
     by (rewrite (Hs _ Hin); reflexivity).
   apply HY; rewrite (edge_slot_inj d Y _ Hnd E); exact Hin.
 Qed.
 
 (** Every reading of a corner slot, and of an edge slot. *)
-Definition all_cslots : list cslot :=
+Definition all_corner_readings : list corner_slot :=
   [(URF,T0);(URF,T1);(URF,T2);(UFL,T0);(UFL,T1);(UFL,T2);
    (ULB,T0);(ULB,T1);(ULB,T2);(UBR,T0);(UBR,T1);(UBR,T2);
    (DFR,T0);(DFR,T1);(DFR,T2);(DLF,T0);(DLF,T1);(DLF,T2);
    (DBL,T0);(DBL,T1);(DBL,T2);(DRB,T0);(DRB,T1);(DRB,T2)].
 
 (** And every reading an edge slot can show. *)
-Definition all_eslots : list eslot :=
+Definition all_edge_readings : list edge_slot :=
   [(UR,F0);(UR,F1);(UF,F0);(UF,F1);(UL,F0);(UL,F1);(UB,F0);(UB,F1);
    (DR,F0);(DR,F1);(DF,F0);(DF,F1);(DL,F0);(DL,F1);(DB,F0);(DB,F1);
    (FR,F0);(FR,F1);(FL,F0);(FL,F1);(BL,F0);(BL,F1);(BR,F0);(BR,F1)].
 
 (** The list really is every corner reading, *)
-Lemma all_cslots_complete v : In v all_cslots.
+Lemma all_corner_readings_complete v : In v all_corner_readings.
 Proof. destruct v as [X t]; destruct X, t; simpl; tauto. Qed.
 
 (** and this one every edge reading. *)
-Lemma all_eslots_complete v : In v all_eslots.
+Lemma all_edge_readings_complete v : In v all_edge_readings.
 Proof. destruct v as [Y f]; destruct Y, f; simpl; tauto. Qed.
 
 (** The readings a slot can still show once the listed slots are finished. *)
@@ -304,25 +304,25 @@ Proof.
 Qed.
 
 (** The corner readings still possible once the listed slots are finished. *)
-Definition cdomain (cs : list corner) : list cslot :=
-  filter (fun v => negb (corner_inb (fst v) cs)) all_cslots.
+Definition corner_domain (cs : list corner) : list corner_slot :=
+  filter (fun v => negb (corner_inb (fst v) cs)) all_corner_readings.
 
 (** And the edge readings. *)
-Definition edomain (es : list edge) : list eslot :=
-  filter (fun v => negb (edge_inb (fst v) es)) all_eslots.
+Definition edge_domain (es : list edge) : list edge_slot :=
+  filter (fun v => negb (edge_inb (fst v) es)) all_edge_readings.
 
 (** A reading whose piece is unfinished is one of those, *)
-Lemma in_cdomain v cs : ~ In (fst v) cs -> In v (cdomain cs).
+Lemma in_corner_domain v cs : ~ In (fst v) cs -> In v (corner_domain cs).
 Proof.
   intro H; apply filter_In; split;
-    [apply all_cslots_complete | rewrite (corner_inb_false _ _ H); reflexivity].
+    [apply all_corner_readings_complete | rewrite (corner_inb_false _ _ H); reflexivity].
 Qed.
 
 (** and the same for an edge reading. *)
-Lemma in_edomain v es : ~ In (fst v) es -> In v (edomain es).
+Lemma in_edge_domain v es : ~ In (fst v) es -> In v (edge_domain es).
 Proof.
   intro H; apply filter_In; split;
-    [apply all_eslots_complete | rewrite (edge_inb_false _ _ H); reflexivity].
+    [apply all_edge_readings_complete | rewrite (edge_inb_false _ _ H); reflexivity].
 Qed.
 
 (** * Finishing
@@ -340,22 +340,22 @@ Definition all_edge_slots : list edge :=
 
 (** Every slot right is the solved cube, which is how a run ends. *)
 Lemma solved_everywhere d :
-  solvedc d all_corner_slots -> solvede d all_edge_slots -> d = csolved.
+  corners_done d all_corner_slots -> edges_done d all_edge_slots -> d = solved_cube.
 Proof.
   intros Hc He; apply cube_ext.
-  - intro X; rewrite getc_csolved; apply Hc; destruct X; simpl; tauto.
-  - intro Y; rewrite gete_csolved; apply He; destruct Y; simpl; tauto.
+  - intro X; rewrite read_corner_solved_cube; apply Hc; destruct X; simpl; tauto.
+  - intro Y; rewrite read_edge_solved_cube; apply He; destruct Y; simpl; tauto.
 Qed.
 
 (** The eighth corner holds the only piece left, unturned because the
     rotations of a reachable cube cancel. *)
 Lemma last_corner d :
   wellformed d -> twist_total d = T0 ->
-  solvedc d [URF; UFL; ULB; UBR; DFR; DLF; DBL] ->
-  getc d DRB = (DRB, T0).
+  corners_done d [URF; UFL; ULB; UBR; DFR; DLF; DBL] ->
+  read_corner d DRB = (DRB, T0).
 Proof.
   intros Hw Ht Hs.
-  assert (Hfr : ~ In (fst (getc d DRB)) [URF; UFL; ULB; UBR; DFR; DLF; DBL])
+  assert (Hfr : ~ In (fst (read_corner d DRB)) [URF; UFL; ULB; UBR; DFR; DLF; DBL])
     by (apply corner_fresh; auto; simpl; intuition discriminate).
   pose proof (Hs URF ltac:(simpl; tauto)) as H0.
   pose proof (Hs UFL ltac:(simpl; tauto)) as H1.
@@ -364,7 +364,7 @@ Proof.
   pose proof (Hs DFR ltac:(simpl; tauto)) as H4.
   pose proof (Hs DLF ltac:(simpl; tauto)) as H5.
   pose proof (Hs DBL ltac:(simpl; tauto)) as H6.
-  cbn [getc] in Hfr, H0, H1, H2, H3, H4, H5, H6 |- *.
+  cbn [read_corner] in Hfr, H0, H1, H2, H3, H4, H5, H6 |- *.
   destruct (xDRB d) as [P t] eqn:E; cbn [fst] in Hfr.
   assert (P = DRB) by (destruct P; simpl in Hfr; tauto); subst P.
   unfold twist_total, twists, corner_slots in Ht.
@@ -376,11 +376,11 @@ Qed.
 (** And the twelfth edge, unflipped because the flips cancel. *)
 Lemma last_edge d :
   wellformed d -> flip_total d = F0 ->
-  solvede d [UR; UF; UL; UB; DR; DF; DL; DB; FR; FL; BL] ->
-  gete d BR = (BR, F0).
+  edges_done d [UR; UF; UL; UB; DR; DF; DL; DB; FR; FL; BL] ->
+  read_edge d BR = (BR, F0).
 Proof.
   intros Hw Hf Hs.
-  assert (Hfr : ~ In (fst (gete d BR)) [UR; UF; UL; UB; DR; DF; DL; DB; FR; FL; BL])
+  assert (Hfr : ~ In (fst (read_edge d BR)) [UR; UF; UL; UB; DR; DF; DL; DB; FR; FL; BL])
     by (apply edge_fresh; auto; simpl; intuition discriminate).
   pose proof (Hs UR ltac:(simpl; tauto)) as H0.
   pose proof (Hs UF ltac:(simpl; tauto)) as H1.
@@ -393,7 +393,7 @@ Proof.
   pose proof (Hs FR ltac:(simpl; tauto)) as H8.
   pose proof (Hs FL ltac:(simpl; tauto)) as H9.
   pose proof (Hs BL ltac:(simpl; tauto)) as H10.
-  cbn [gete] in Hfr, H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, H10 |- *.
+  cbn [read_edge] in Hfr, H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, H10 |- *.
   destruct (yBR d) as [P f] eqn:E; cbn [fst] in Hfr.
   assert (P = BR) by (destruct P; simpl in Hfr; tauto); subst P.
   unfold flip_total, flips, edge_slots in Hf.
@@ -405,17 +405,17 @@ Qed.
 (** The eleventh edge holds its own piece. The other candidate would leave the
     last two exchanged, and that is odd, which no sequence can produce. *)
 Lemma eleventh_edge d :
-  wellformed d -> cparity d = false ->
-  solvedc d all_corner_slots ->
-  solvede d [UR; UF; UL; UB; DR; DF; DL; DB; FR; FL] ->
-  fst (gete d BL) = BL.
+  wellformed d -> cube_parity d = false ->
+  corners_done d all_corner_slots ->
+  edges_done d [UR; UF; UL; UB; DR; DF; DL; DB; FR; FL] ->
+  fst (read_edge d BL) = BL.
 Proof.
   intros Hw Hp Hc He.
-  assert (HBL : ~ In (fst (gete d BL)) [UR; UF; UL; UB; DR; DF; DL; DB; FR; FL])
+  assert (HBL : ~ In (fst (read_edge d BL)) [UR; UF; UL; UB; DR; DF; DL; DB; FR; FL])
     by (apply edge_fresh; auto; simpl; intuition discriminate).
-  assert (HBR : ~ In (fst (gete d BR)) [UR; UF; UL; UB; DR; DF; DL; DB; FR; FL])
+  assert (HBR : ~ In (fst (read_edge d BR)) [UR; UF; UL; UB; DR; DF; DL; DB; FR; FL])
     by (apply edge_fresh; auto; simpl; intuition discriminate).
-  assert (Hne : fst (gete d BL) <> fst (gete d BR))
+  assert (Hne : fst (read_edge d BL) <> fst (read_edge d BR))
     by (intro E; discriminate (edge_slot_inj d BL BR (proj2 Hw) E)).
   pose proof (Hc URF ltac:(simpl; tauto)) as C0.
   pose proof (Hc UFL ltac:(simpl; tauto)) as C1.
@@ -435,13 +435,13 @@ Proof.
   pose proof (He DB ltac:(simpl; tauto)) as E7.
   pose proof (He FR ltac:(simpl; tauto)) as E8.
   pose proof (He FL ltac:(simpl; tauto)) as E9.
-  cbn [getc gete] in HBL, HBR, Hne, C0, C1, C2, C3, C4, C5, C6, C7,
+  cbn [read_corner read_edge] in HBL, HBR, Hne, C0, C1, C2, C3, C4, C5, C6, C7,
                      E0, E1, E2, E3, E4, E5, E6, E7, E8, E9 |- *.
   destruct (yBL d) as [P f] eqn:EL; destruct (yBR d) as [Q g] eqn:ER.
   cbn [fst] in HBL, HBR, Hne |- *.
   destruct P; try (simpl in HBL; tauto); try reflexivity.
   exfalso; destruct Q; try (simpl in HBR; tauto); try congruence.
-  unfold cparity, cranks, eranks, corner_pieces, edge_pieces,
+  unfold cube_parity, corner_ranks, edge_ranks, corner_pieces, edge_pieces,
          corner_slots, edge_slots in Hp.
   cbn [map] in Hp.
   rewrite C0, C1, C2, C3, C4, C5, C6, C7, E0, E1, E2, E3, E4, E5, E6, E7,
@@ -456,70 +456,70 @@ Qed.
 Definition generated (d : cube) : Prop := exists q, element q = d.
 
 (** Composing with any sequence keeps a cube one that sequences produce. *)
-Lemma generated_step w d : generated d -> generated (ccompose (element w) d).
+Lemma generated_step w d : generated d -> generated (compose (element w) d).
 Proof. intros [q <-]; exists (w ++ q); apply element_app. Qed.
 
 (** A cube that can be solved is one of them, by undoing its solution. *)
-Lemma generated_csolvable c : csolvable c -> generated c.
-Proof. apply csolvable_element. Qed.
+Lemma generated_solvable c : solvable c -> generated c.
+Proof. apply solvable_element. Qed.
 
 (** So its pieces are all different, *)
 Lemma generated_wellformed d : generated d -> wellformed d.
 Proof. intros [q <-]; apply wellformed_element. Qed.
 
 (** its two rearrangements have even combined parity, *)
-Lemma generated_cparity d : generated d -> cparity d = false.
-Proof. intros [q <-]; apply cparity_element. Qed.
+Lemma generated_cube_parity d : generated d -> cube_parity d = false.
+Proof. intros [q <-]; apply cube_parity_element. Qed.
 
 (** its corner rotations cancel, *)
 Lemma generated_twist d : generated d -> twist_total d = T0.
-Proof. intros [q <-]; unfold element; apply twist_total_crun. Qed.
+Proof. intros [q <-]; unfold element; apply twist_total_run_cube. Qed.
 
 (** and its edge flips cancel. *)
 Lemma generated_flip d : generated d -> flip_total d = F0.
-Proof. intros [q <-]; unfold element; apply flip_total_crun. Qed.
+Proof. intros [q <-]; unfold element; apply flip_total_run_cube. Qed.
 
 (** Two steps in a row are one step with the sequences joined. *)
-Lemma ccompose_steps w u d :
-  ccompose (element w) (ccompose (element u) d) = ccompose (element (w ++ u)) d.
-Proof. rewrite element_app, ccompose_assoc; reflexivity. Qed.
+Lemma compose_steps w u d :
+  compose (element w) (compose (element u) d) = compose (element (w ++ u)) d.
+Proof. rewrite element_app, compose_assoc; reflexivity. Qed.
 
 (** A sequence that solves a cube from the left solves it from the right, so
     the method's sequence is a solution in the ordinary sense. *)
 Lemma solution_of_left c W :
-  csolvable c -> ccompose (element W) c = csolved -> crun c W = csolved.
+  solvable c -> compose (element W) c = solved_cube -> run_cube c W = solved_cube.
 Proof.
-  intros [p Hp] HW; rewrite crun_by_element.
-  rewrite crun_by_element in Hp.
+  intros [p Hp] HW; rewrite run_cube_by_element.
+  rewrite run_cube_by_element in Hp.
   assert (E : element W = element p).
-  { rewrite <- (ccompose_id_r (element W)), <- Hp, <- ccompose_assoc, HW.
-    apply ccompose_id_l. }
+  { rewrite <- (compose_id_r (element W)), <- Hp, <- compose_assoc, HW.
+    apply compose_id_l. }
   rewrite E; exact Hp.
 Qed.
 
 (** * How long the answer is *)
 
-Definition ctable_bounded (t : ctable) (b : nat) : bool :=
+Definition corner_table_bounded (t : corner_table) (b : nat) : bool :=
   forallb (fun e => Nat.leb (length (snd e)) b) t.
 
 (** And the same for an edge table. *)
-Definition etable_bounded (t : etable) (b : nat) : bool :=
+Definition edge_table_bounded (t : edge_table) (b : nat) : bool :=
   forallb (fun e => Nat.leb (length (snd e)) b) t.
 
 (** So a lookup is never longer than the bound its table passed, *)
-Lemma clookup_bounded t v b :
-  ctable_bounded t b = true -> ccovers t v = true -> length (clookup t v) <= b.
+Lemma corner_lookup_bounded t v b :
+  corner_table_bounded t b = true -> corner_covers t v = true -> length (corner_lookup t v) <= b.
 Proof.
-  intros Hb Hc; unfold ctable_bounded in Hb; rewrite forallb_forall in Hb.
-  apply Nat.leb_le, (Hb _ (clookup_in t v Hc)).
+  intros Hb Hc; unfold corner_table_bounded in Hb; rewrite forallb_forall in Hb.
+  apply Nat.leb_le, (Hb _ (corner_lookup_in t v Hc)).
 Qed.
 
 (** and the same for an edge table. *)
-Lemma elookup_bounded t v b :
-  etable_bounded t b = true -> ecovers t v = true -> length (elookup t v) <= b.
+Lemma edge_lookup_bounded t v b :
+  edge_table_bounded t b = true -> edge_covers t v = true -> length (edge_lookup t v) <= b.
 Proof.
-  intros Hb Hc; unfold etable_bounded in Hb; rewrite forallb_forall in Hb.
-  apply Nat.leb_le, (Hb _ (elookup_in t v Hc)).
+  intros Hb Hc; unfold edge_table_bounded in Hb; rewrite forallb_forall in Hb.
+  apply Nat.leb_le, (Hb _ (edge_lookup_in t v Hc)).
 Qed.
 
 (** * Running the whole method
@@ -530,15 +530,15 @@ Qed.
     below carries the finished slots along. *)
 
 Inductive stage :=
-| Cstage (X : corner) (t : ctable) (b : nat)
-| Estage (Y : edge) (t : etable) (b : nat).
+| CornerStage (X : corner) (t : corner_table) (b : nat)
+| EdgeStage (Y : edge) (t : edge_table) (b : nat).
 
 (** The cube after running the stages. *)
 Fixpoint chain_state (ss : list stage) (d : cube) : cube :=
   match ss with
   | [] => d
-  | Cstage X t _ :: r => chain_state r (ccompose (element (clookup t (getc d X))) d)
-  | Estage Y t _ :: r => chain_state r (ccompose (element (elookup t (gete d Y))) d)
+  | CornerStage X t _ :: r => chain_state r (compose (element (corner_lookup t (read_corner d X))) d)
+  | EdgeStage Y t _ :: r => chain_state r (compose (element (edge_lookup t (read_edge d Y))) d)
   end.
 
 (** And the sequence that gets there. Later stages compose on the left, so
@@ -546,35 +546,35 @@ Fixpoint chain_state (ss : list stage) (d : cube) : cube :=
 Fixpoint chain_word (ss : list stage) (d : cube) : list move :=
   match ss with
   | [] => []
-  | Cstage X t _ :: r =>
-      let w := clookup t (getc d X) in chain_word r (ccompose (element w) d) ++ w
-  | Estage Y t _ :: r =>
-      let w := elookup t (gete d Y) in chain_word r (ccompose (element w) d) ++ w
+  | CornerStage X t _ :: r =>
+      let w := corner_lookup t (read_corner d X) in chain_word r (compose (element w) d) ++ w
+  | EdgeStage Y t _ :: r =>
+      let w := edge_lookup t (read_edge d Y) in chain_word r (compose (element w) d) ++ w
   end.
 
 (** The sequence a run builds really carries the cube to the state it ends in. *)
 Lemma chain_state_word ss : forall d,
-  ccompose (element (chain_word ss d)) d = chain_state ss d.
+  compose (element (chain_word ss d)) d = chain_state ss d.
 Proof.
   induction ss as [| s ss IH]; intro d; simpl;
-    [rewrite element_nil; apply ccompose_id_l |].
-  destruct s; rewrite element_app, ccompose_assoc; apply IH.
+    [rewrite element_nil; apply compose_id_l |].
+  destruct s; rewrite element_app, compose_assoc; apply IH.
 Qed.
 
 (** The slots the stages finish. *)
-Fixpoint stagesc (ss : list stage) : list corner :=
+Fixpoint stage_corners (ss : list stage) : list corner :=
   match ss with
   | [] => []
-  | Cstage X _ _ :: r => stagesc r ++ [X]
-  | Estage _ _ _ :: r => stagesc r
+  | CornerStage X _ _ :: r => stage_corners r ++ [X]
+  | EdgeStage _ _ _ :: r => stage_corners r
   end.
 
 (** And the edge slots they finish. *)
-Fixpoint stagese (ss : list stage) : list edge :=
+Fixpoint stage_edges (ss : list stage) : list edge :=
   match ss with
   | [] => []
-  | Cstage _ _ _ :: r => stagese r
-  | Estage Y _ _ :: r => stagese r ++ [Y]
+  | CornerStage _ _ _ :: r => stage_edges r
+  | EdgeStage Y _ _ :: r => stage_edges r ++ [Y]
   end.
 
 (** What a run of the method is allowed to do. The two runs differ only in
@@ -583,18 +583,18 @@ Fixpoint stagese (ss : list stage) : list edge :=
     the facts they have to satisfy keeps one driver for both. *)
 Record policy := Policy {
   usable : list move -> bool;
-  cdom : list corner -> list cslot;
-  edom : list edge -> edge -> list eslot;
+  corner_readings : list corner -> list corner_slot;
+  edge_readings : list edge -> edge -> list edge_slot;
   invariant : cube -> Prop;
   usable_nil : usable [] = true;
   usable_app : forall w u, usable (w ++ u) = andb (usable w) (usable u);
   invariant_generated : forall d, invariant d -> generated d;
   invariant_step : forall w d,
-    usable w = true -> invariant d -> invariant (ccompose (element w) d);
+    usable w = true -> invariant d -> invariant (compose (element w) d);
   cdom_covers : forall d cs X,
-    invariant d -> solvedc d cs -> ~ In X cs -> In (getc d X) (cdom cs);
+    invariant d -> corners_done d cs -> ~ In X cs -> In (read_corner d X) (corner_readings cs);
   edom_covers : forall d es Y,
-    invariant d -> solvede d es -> ~ In Y es -> In (gete d Y) (edom es Y)
+    invariant d -> edges_done d es -> ~ In Y es -> In (read_edge d Y) (edge_readings es Y)
 }.
 
 (** What the stages have to check out as, given what is finished already. *)
@@ -602,13 +602,13 @@ Fixpoint chain_ok (P : policy) (cs : list corner) (es : list edge)
     (ss : list stage) : bool :=
   match ss with
   | [] => true
-  | Cstage X t b :: r =>
-      ctable_ok t cs es X && forallb (ccovers t) (cdom P cs) &&
-      ctable_bounded t b && negb (corner_inb X cs) &&
+  | CornerStage X t b :: r =>
+      corner_table_ok t cs es X && forallb (corner_covers t) (corner_readings P cs) &&
+      corner_table_bounded t b && negb (corner_inb X cs) &&
       forallb (fun e => usable P (snd e)) t && chain_ok P (X :: cs) es r
-  | Estage Y t b :: r =>
-      etable_ok t cs es Y && forallb (ecovers t) (edom P es Y) &&
-      etable_bounded t b && negb (edge_inb Y es) &&
+  | EdgeStage Y t b :: r =>
+      edge_table_ok t cs es Y && forallb (edge_covers t) (edge_readings P es Y) &&
+      edge_table_bounded t b && negb (edge_inb Y es) &&
       forallb (fun e => usable P (snd e)) t && chain_ok P cs (Y :: es) r
   end.
 
@@ -616,8 +616,8 @@ Fixpoint chain_ok (P : policy) (cs : list corner) (es : list edge)
 Fixpoint chain_bound (ss : list stage) : nat :=
   match ss with
   | [] => 0
-  | Cstage _ _ b :: r => b + chain_bound r
-  | Estage _ _ b :: r => b + chain_bound r
+  | CornerStage _ _ b :: r => b + chain_bound r
+  | EdgeStage _ _ b :: r => b + chain_bound r
   end.
 
 (** A slot in the finished list passes the test, *)
@@ -636,10 +636,10 @@ Qed.
     policy promises, uses only the sequences it allows, and answers within the
     length its tables allow. *)
 Lemma chain_correct (P : policy) ss : forall cs es d,
-  chain_ok P cs es ss = true -> invariant P d -> solvedc d cs -> solvede d es ->
+  chain_ok P cs es ss = true -> invariant P d -> corners_done d cs -> edges_done d es ->
   invariant P (chain_state ss d) /\
-  solvedc (chain_state ss d) (stagesc ss ++ cs) /\
-  solvede (chain_state ss d) (stagese ss ++ es) /\
+  corners_done (chain_state ss d) (stage_corners ss ++ cs) /\
+  edges_done (chain_state ss d) (stage_edges ss ++ es) /\
   usable P (chain_word ss d) = true /\
   length (chain_word ss d) <= chain_bound ss.
 Proof.
@@ -653,18 +653,18 @@ Proof.
     apply Bool.negb_true_iff in Hfresh.
     assert (HX : ~ In X cs)
       by (intro Hin; rewrite (corner_inb_true X cs Hin) in Hfresh; discriminate).
-    assert (Hcov : ccovers t (getc d X) = true).
-    { match goal with H : forallb _ (cdom P cs) = true |- _ =>
+    assert (Hcov : corner_covers t (read_corner d X) = true).
+    { match goal with H : forallb _ (corner_readings P cs) = true |- _ =>
         rewrite forallb_forall in H;
         apply H, (cdom_covers P d cs X Hinv Hc HX) end. }
-    assert (Hw : usable P (clookup t (getc d X)) = true).
+    assert (Hw : usable P (corner_lookup t (read_corner d X)) = true).
     { match goal with H : forallb _ t = true |- _ =>
-        rewrite forallb_forall in H; apply (H _ (clookup_in t _ Hcov)) end. }
-    destruct (cstep t cs es X d ltac:(assumption) Hcov Hc He) as [Hc' He'].
+        rewrite forallb_forall in H; apply (H _ (corner_lookup_in t _ Hcov)) end. }
+    destruct (finish_corner t cs es X d ltac:(assumption) Hcov Hc He) as [Hc' He'].
     destruct (IH (X :: cs) es _ ltac:(assumption)
                  (invariant_step P _ _ Hw Hinv) Hc' He')
       as [Hi' [Hc'' [He'' [Hu Hl]]]].
-    pose proof (clookup_bounded t (getc d X) b ltac:(assumption) Hcov).
+    pose proof (corner_lookup_bounded t (read_corner d X) b ltac:(assumption) Hcov).
     rewrite <- app_assoc; simpl.
     refine (conj Hi' (conj Hc'' (conj He'' (conj _ _))));
       [rewrite (usable_app P), Hu, Hw; reflexivity
@@ -673,18 +673,18 @@ Proof.
     apply Bool.negb_true_iff in Hfresh.
     assert (HY : ~ In Y es)
       by (intro Hin; rewrite (edge_inb_true Y es Hin) in Hfresh; discriminate).
-    assert (Hcov : ecovers t (gete d Y) = true).
-    { match goal with H : forallb _ (edom P es Y) = true |- _ =>
+    assert (Hcov : edge_covers t (read_edge d Y) = true).
+    { match goal with H : forallb _ (edge_readings P es Y) = true |- _ =>
         rewrite forallb_forall in H;
         apply H, (edom_covers P d es Y Hinv He HY) end. }
-    assert (Hw : usable P (elookup t (gete d Y)) = true).
+    assert (Hw : usable P (edge_lookup t (read_edge d Y)) = true).
     { match goal with H : forallb _ t = true |- _ =>
-        rewrite forallb_forall in H; apply (H _ (elookup_in t _ Hcov)) end. }
-    destruct (estep t cs es Y d ltac:(assumption) Hcov Hc He) as [Hc' He'].
+        rewrite forallb_forall in H; apply (H _ (edge_lookup_in t _ Hcov)) end. }
+    destruct (finish_edge t cs es Y d ltac:(assumption) Hcov Hc He) as [Hc' He'].
     destruct (IH cs (Y :: es) _ ltac:(assumption)
                  (invariant_step P _ _ Hw Hinv) Hc' He')
       as [Hi' [Hc'' [He'' [Hu Hl]]]].
-    pose proof (elookup_bounded t (gete d Y) b ltac:(assumption) Hcov).
+    pose proof (edge_lookup_bounded t (read_edge d Y) b ltac:(assumption) Hcov).
     rewrite <- app_assoc; simpl.
     refine (conj Hi' (conj Hc'' (conj He'' (conj _ _))));
       [rewrite (usable_app P), Hu, Hw; reflexivity
@@ -703,31 +703,31 @@ Proof. reflexivity. Qed.
 (** The policy that run follows. *)
 Definition plain : policy.
 Proof.
-  refine (Policy every_word cdomain (fun es _ => edomain es) generated
+  refine (Policy every_word corner_domain (fun es _ => edge_domain es) generated
                  eq_refl every_word_app (fun d H => H) _ _ _).
   - intros w d _ Hg; apply generated_step, Hg.
   - intros d cs X Hg Hs HX;
-      apply in_cdomain, corner_fresh; auto using generated_wellformed.
+      apply in_corner_domain, corner_fresh; auto using generated_wellformed.
   - intros d es Y Hg Hs HY;
-      apply in_edomain, edge_fresh; auto using generated_wellformed.
+      apply in_edge_domain, edge_fresh; auto using generated_wellformed.
 Defined.
 
 (** A stage whose slot is already known to hold its own piece needs the table
     to answer only for that piece. *)
-Lemma ecovers_forced t Y d :
-  ecovers t (Y, F0) = true -> ecovers t (Y, F1) = true ->
-  fst (gete d Y) = Y -> ecovers t (gete d Y) = true.
+Lemma edge_covers_forced t Y d :
+  edge_covers t (Y, F0) = true -> edge_covers t (Y, F1) = true ->
+  fst (read_edge d Y) = Y -> edge_covers t (read_edge d Y) = true.
 Proof.
-  intros H0 H1 HY; destruct (gete d Y) as [P f]; cbn [fst] in HY; subst P;
+  intros H0 H1 HY; destruct (read_edge d Y) as [P f]; cbn [fst] in HY; subst P;
     destruct f; assumption.
 Qed.
 
 (** Reading a finished-slot list in any order. *)
-Lemma solvedc_sub d cs cs' :
-  (forall X, In X cs' -> In X cs) -> solvedc d cs -> solvedc d cs'.
+Lemma corners_done_sub d cs cs' :
+  (forall X, In X cs' -> In X cs) -> corners_done d cs -> corners_done d cs'.
 Proof. intros H Hs X HX; apply Hs, H, HX. Qed.
 
 (** And the same for edge slots. *)
-Lemma solvede_sub d es es' :
-  (forall Y, In Y es' -> In Y es) -> solvede d es -> solvede d es'.
+Lemma edges_done_sub d es es' :
+  (forall Y, In Y es' -> In Y es) -> edges_done d es -> edges_done d es'.
 Proof. intros H Hs Y HY; apply Hs, H, HY. Qed.

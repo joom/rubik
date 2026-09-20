@@ -97,7 +97,7 @@ def render_table(name, kind, entries, comment):
         else:
             key = f"({L.EDGES[piece]}, {FLIPS[orient]})"
         rows.append(f"   ({key}, {word_text(w)})")
-    kindname = "ctable" if kind == "c" else "etable"
+    kindname = "corner_table" if kind == "c" else "edge_table"
     return (comment + f"\nDefinition {name} : {kindname} :=\n  ["
             + ";\n".join(rows).lstrip() + "].\n")
 
@@ -208,9 +208,9 @@ def emit_full(groups):
         render_table(table_name(kind, slot, False), kind, entries,
                      table_comment(kind, slot, *done_sets(kind, slot)))
         for (kind, slot), entries in sorted(groups.items())) + "\n"
-    cstages = "; ".join(f"Cstage {L.CORNERS[k]} {table_name('c', k, False)} {bounds[('c', k)]}"
+    cstages = "; ".join(f"CornerStage {L.CORNERS[k]} {table_name('c', k, False)} {bounds[('c', k)]}"
                         for k in range(7))
-    estages = "; ".join(f"Estage {L.EDGES[j]} {table_name('e', j, False)} {bounds[('e', j)]}"
+    estages = "; ".join(f"EdgeStage {L.EDGES[j]} {table_name('e', j, False)} {bounds[('e', j)]}"
                         for j in range(10))
     total = (sum(bounds[("c", k)] for k in range(7)) +
              sum(bounds[("e", j)] for j in range(10)) + bounds[("e", 10)])
@@ -228,7 +228,7 @@ Proof. vm_compute; reflexivity. Qed.
 
 (** The corner slots they finish, newest first. *)
 Lemma corner_stages_slots :
-  stagesc corner_stages = {rocq_list(list(reversed(L.CORNERS[:7])))}.
+  stage_corners corner_stages = {rocq_list(list(reversed(L.CORNERS[:7])))}.
 Proof. vm_compute; reflexivity. Qed.
 
 (** The edge stages check out too, given the corners are done. *)
@@ -236,28 +236,28 @@ Lemma edge_stages_ok : chain_ok plain all_corner_slots [] edge_stages = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** The edge slots they finish, newest first. *)
-Lemma edge_stages_slots : stagese edge_stages = {edone}.
+Lemma edge_stages_slots : stage_edges edge_stages = {edone}.
 Proof. vm_compute; reflexivity. Qed.
 
 (** They finish no corner slot. *)
-Lemma edge_stages_corners : stagesc edge_stages = [].
+Lemma edge_stages_corners : stage_corners edge_stages = [].
 Proof. vm_compute; reflexivity. Qed.
 
 (** The eleventh edge holds its own piece, so its table answers only for the
     two flips it can show. *)
-Lemma bl_table_ok : etable_ok bl_table all_corner_slots {edone} BL = true.
+Lemma bl_table_ok : edge_table_ok bl_table all_corner_slots {edone} BL = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** It answers when that edge is unflipped, *)
-Lemma bl_table_covers_0 : ecovers bl_table (BL, F0) = true.
+Lemma bl_table_covers_0 : edge_covers bl_table (BL, F0) = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** and when it is flipped. *)
-Lemma bl_table_covers_1 : ecovers bl_table (BL, F1) = true.
+Lemma bl_table_covers_1 : edge_covers bl_table (BL, F1) = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** And its answers are short. *)
-Lemma bl_table_bounded : etable_bounded bl_table {bounds[("e", 10)]} = true.
+Lemma bl_table_bounded : edge_table_bounded bl_table {bounds[("e", 10)]} = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** The longest answer the tables allow, added up over the stages. *)
@@ -279,11 +279,11 @@ def emit_domino(groups):
         render_table(table_name(kind, slot, True), kind, entries,
                      table_comment(kind, slot, *done_sets(kind, slot)))
         for (kind, slot), entries in sorted(groups.items())) + "\n"
-    cstages = "; ".join(f"Cstage {L.CORNERS[k]} {table_name('c', k, True)} {bounds[('c', k)]}"
+    cstages = "; ".join(f"CornerStage {L.CORNERS[k]} {table_name('c', k, True)} {bounds[('c', k)]}"
                         for k in range(7))
-    ustages = "; ".join(f"Estage {L.EDGES[j]} {table_name('e', j, True)} {bounds[('e', j)]}"
+    ustages = "; ".join(f"EdgeStage {L.EDGES[j]} {table_name('e', j, True)} {bounds[('e', j)]}"
                         for j in range(7))
-    sstages = "; ".join(f"Estage {L.EDGES[j]} {table_name('e', j, True)} {bounds[('e', j)]}"
+    sstages = "; ".join(f"EdgeStage {L.EDGES[j]} {table_name('e', j, True)} {bounds[('e', j)]}"
                         for j in (8, 9))
     total = (sum(bounds[("c", k)] for k in range(7)) +
              sum(bounds[("e", j)] for j in range(7)) +
@@ -305,7 +305,7 @@ Proof. vm_compute; reflexivity. Qed.
 
 (** The corner slots they finish, newest first. *)
 Lemma dcorner_stages_slots :
-  stagesc dcorner_stages = {rocq_list(list(reversed(L.CORNERS[:7])))}.
+  stage_corners dcorner_stages = {rocq_list(list(reversed(L.CORNERS[:7])))}.
 Proof. vm_compute; reflexivity. Qed.
 
 (** The outer edge stages check out, given the corners are finished. *)
@@ -313,11 +313,11 @@ Lemma dud_stages_ok : chain_ok restricted all_corner_slots [] dud_stages = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** The outer edge slots they finish, and no corner slot. *)
-Lemma dud_stages_slots : stagese dud_stages = {rocq_list(list(reversed(L.EDGES[:7])))}.
+Lemma dud_stages_slots : stage_edges dud_stages = {rocq_list(list(reversed(L.EDGES[:7])))}.
 Proof. vm_compute; reflexivity. Qed.
 
 (** They finish no corner slot. *)
-Lemma dud_stages_corners : stagesc dud_stages = [].
+Lemma dud_stages_corners : stage_corners dud_stages = [].
 Proof. vm_compute; reflexivity. Qed.
 
 (** And the slice stages, given the outer edges are finished. *)
@@ -326,11 +326,11 @@ Proof. vm_compute; reflexivity. Qed.
 
 (** The slice slots they finish, and no corner slot. *)
 Lemma dslice_stages_slots :
-  stagese dslice_stages = {rocq_list([L.EDGES[9], L.EDGES[8]])}.
+  stage_edges dslice_stages = {rocq_list([L.EDGES[9], L.EDGES[8]])}.
 Proof. vm_compute; reflexivity. Qed.
 
 (** They finish no corner slot either. *)
-Lemma dslice_stages_corners : stagesc dslice_stages = [].
+Lemma dslice_stages_corners : stage_corners dslice_stages = [].
 Proof. vm_compute; reflexivity. Qed.
 
 (** The longest answer the tables allow, added up over the stages. *)

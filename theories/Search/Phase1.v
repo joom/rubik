@@ -61,14 +61,14 @@ Fixpoint search1 (T : tables1) (d : nat) (prev : option move) (c : cube)
     | 0 => None
     | S d' =>
         if Nat.leb (estimate1 T c) d then
-          choose_move (fun m => search1 T d' (Some m) (cturn m c)) (allowed_moves prev)
+          choose_move (fun m => search1 T d' (Some m) (turn_cube m c)) (allowed_moves prev)
         else None
     end.
 
 (** Anything the first phase returns really does reach the subgroup, using no
     more moves than it was allowed. *)
 Theorem search1_sound T d prev c p :
-  search1 T d prev c = Some p -> in_subgroup (crun c p) /\ length p <= d.
+  search1 T d prev c = Some p -> in_subgroup (run_cube c p) /\ length p <= d.
 Proof.
   revert prev c p; induction d as [| d IH]; intros prev c p; cbn [search1];
     destruct (in_subgroupb c) eqn:E.
@@ -99,7 +99,7 @@ Definition phase1 (T : tables1) (limit : nat) (c : cube) : option (list move) :=
   deepen1 T limit 0 c.
 
 (** Whatever it returns reaches the subgroup. *)
-Theorem phase1_sound T limit c p : phase1 T limit c = Some p -> in_subgroup (crun c p).
+Theorem phase1_sound T limit c p : phase1 T limit c = Some p -> in_subgroup (run_cube c p).
 Proof.
   unfold phase1; generalize 0 as d; revert p.
   induction limit as [| limit IH]; intros p d; cbn [deepen1];
@@ -140,40 +140,40 @@ Qed.
 (** A sequence reaching the subgroup is, read one coordinate at a time, a path
     of the same length to that coordinate's own goal. *)
 Lemma twist_reaches c q :
-  in_subgroup (crun c q) -> reaches twist_step twist_goal (length q) (twists c).
+  in_subgroup (run_cube c q) -> reaches twist_step twist_goal (length q) (twists c).
 Proof.
   revert c; induction q as [| m q IH]; intros c H;
-    unfold crun in H; cbn [fold_left] in H; simpl.
+    unfold run_cube in H; cbn [fold_left] in H; simpl.
   - apply reaches_goal; destruct H as [[Ht _] _]; unfold twist_goal;
       rewrite Ht; destruct (list_eq_dec twist_eq_dec _ _); congruence.
-  - apply reaches_step with (twists (cturn m c)); [| apply IH, H].
-    rewrite twists_cturn; apply in_map_iff;
+  - apply reaches_step with (twists (turn_cube m c)); [| apply IH, H].
+    rewrite twists_turn_cube; apply in_map_iff;
       exists m; split; [reflexivity | apply table_moves_complete].
 Qed.
 
 (** The same for the edge flips, *)
 Lemma flip_reaches c q :
-  in_subgroup (crun c q) -> reaches flip_step flip_goal (length q) (flips c).
+  in_subgroup (run_cube c q) -> reaches flip_step flip_goal (length q) (flips c).
 Proof.
   revert c; induction q as [| m q IH]; intros c H;
-    unfold crun in H; cbn [fold_left] in H; simpl.
+    unfold run_cube in H; cbn [fold_left] in H; simpl.
   - apply reaches_goal; destruct H as [[_ Hf] _]; unfold flip_goal;
       rewrite Hf; destruct (list_eq_dec flip_eq_dec _ _); congruence.
-  - apply reaches_step with (flips (cturn m c)); [| apply IH, H].
-    rewrite flips_cturn; apply in_map_iff;
+  - apply reaches_step with (flips (turn_cube m c)); [| apply IH, H].
+    rewrite flips_turn_cube; apply in_map_iff;
       exists m; split; [reflexivity | apply table_moves_complete].
 Qed.
 
 (** and for the slice. *)
 Lemma slice_reaches c q :
-  in_subgroup (crun c q) -> reaches slice_step slice_goal (length q) (slice_mask c).
+  in_subgroup (run_cube c q) -> reaches slice_step slice_goal (length q) (slice_mask c).
 Proof.
   revert c; induction q as [| m q IH]; intros c H;
-    unfold crun in H; cbn [fold_left] in H; simpl.
+    unfold run_cube in H; cbn [fold_left] in H; simpl.
   - apply reaches_goal; destruct H as [_ Hs]; unfold slice_goal;
       rewrite Hs; destruct (list_eq_dec Bool.bool_dec _ _); congruence.
-  - apply reaches_step with (slice_mask (cturn m c)); [| apply IH, H].
-    rewrite slice_mask_cturn; apply in_map_iff;
+  - apply reaches_step with (slice_mask (turn_cube m c)); [| apply IH, H].
+    rewrite slice_mask_turn_cube; apply in_map_iff;
       exists m; split; [reflexivity | apply table_moves_complete].
 Qed.
 
@@ -209,7 +209,7 @@ Qed.
 (** So the tables never overestimate how far the subgroup is, and the bound
     the search prunes with never rejects a branch that would have worked. *)
 Theorem estimate1_admissible u c q :
-  in_subgroup (crun c q) -> estimate1 (build_tables1 u) c <= length q.
+  in_subgroup (run_cube c q) -> estimate1 (build_tables1 u) c <= length q.
 Proof.
   intro H; unfold estimate1, build_tables1; cbn [t_twist t_flip t_slice].
   rewrite twist_lookup, flip_lookup, slice_lookup.
@@ -225,17 +225,17 @@ Qed.
 (** Rewriting a sequence of cube moves into a canonical one. This is the
     generic normalisation instantiated at cubes, with every move allowed. *)
 Lemma normalise_cube p :
-  exists q, canonical None q /\ (forall c, crun c q = crun c p) /\
+  exists q, canonical None q /\ (forall c, run_cube c q = run_cube c p) /\
     length q <= length p.
 Proof.
-  destruct (canonical_exists cube cturn (fun _ => true)
+  destruct (canonical_exists cube turn_cube (fun _ => true)
               (fun f t1 t2 _ _ =>
-                 match csame_face_merge f t1 t2 with
+                 match same_face_merge_cube f t1 t2 with
                  | or_introl H => or_introl H
                  | or_intror (ex_intro _ t3 H) =>
                      or_intror (ex_intro _ t3 (conj eq_refl H))
                  end)
-              (fun f g t1 t2 Hop c => cmove_comm f g t1 t2 c Hop)
+              (fun f g t1 t2 Hop c => move_comm_cube f g t1 t2 c Hop)
               p (proj2 (Forall_forall _ p) (fun m _ => eq_refl)))
     as [q [Hc [_ [Hq Hl]]]].
   exists q; repeat split; auto.
@@ -244,21 +244,21 @@ Qed.
 (** The first phase returns whenever some canonical sequence of the allowed
     length reaches the subgroup. *)
 Lemma search1_complete T :
-  (forall c q, in_subgroup (crun c q) -> estimate1 T c <= length q) ->
-  forall d prev c q, canonical prev q -> in_subgroup (crun c q) -> length q <= d ->
+  (forall c q, in_subgroup (run_cube c q) -> estimate1 T c <= length q) ->
+  forall d prev c q, canonical prev q -> in_subgroup (run_cube c q) -> length q <= d ->
   exists p, search1 T d prev c = Some p.
 Proof.
   intro Hadm; induction d as [| d IH]; intros prev c q Hc H Hl; cbn [search1];
     destruct (in_subgroupb c) eqn:E; try (exists []; reflexivity);
     destruct q as [| m q];
-    try (exfalso; unfold crun in H; cbn [fold_left] in H;
+    try (exfalso; unfold run_cube in H; cbn [fold_left] in H;
          apply in_subgroupb_spec in H; congruence).
   - simpl in Hl; lia.
   - simpl in Hl; apply le_S_n in Hl; destruct Hc as [Ha Hc].
     replace (Nat.leb (estimate1 T c) (S d)) with true;
       [| symmetry; apply Nat.leb_le;
          apply Nat.le_trans with (length (m :: q)); [apply Hadm, H | simpl; lia]].
-    destruct (IH (Some m) (cturn m c) q Hc H Hl) as [p Hp].
+    destruct (IH (Some m) (turn_cube m c) q Hc H Hl) as [p Hp].
     apply (choose_move_complete _ _ m p); [| exact Hp].
     rewrite allowed_moves_filter; apply filter_In; split;
       [rewrite <- table_moves_all; apply table_moves_complete | exact Ha].
@@ -280,8 +280,8 @@ Qed.
     limit it was given. The pruning costs nothing here: any sequence at all is
     matched by a canonical one that is no longer. *)
 Theorem phase1_complete T limit c q :
-  (forall c' q', in_subgroup (crun c' q') -> estimate1 T c' <= length q') ->
-  in_subgroup (crun c q) -> length q <= limit ->
+  (forall c' q', in_subgroup (run_cube c' q') -> estimate1 T c' <= length q') ->
+  in_subgroup (run_cube c q) -> length q <= limit ->
   exists p, phase1 T limit c = Some p.
 Proof.
   intros Hadm H Hl; destruct (normalise_cube q) as [r [Hc [Hr Hlr]]].

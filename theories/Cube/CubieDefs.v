@@ -23,23 +23,23 @@ Inductive twist := T0 | T1 | T2.
 Inductive flip := F0 | F1.
 
 (** Facelet positions within a corner slot and within an edge slot. *)
-Inductive Ci := C0 | C1 | C2.
+Inductive corner_facet := C0 | C1 | C2.
 (** And the two positions within an edge slot. *)
-Inductive Ei := E0 | E1.
+Inductive edge_facet := E0 | E1.
 
 (** A slot holds a piece together with its rotation. *)
-Definition cslot := (corner * twist)%type.
+Definition corner_slot := (corner * twist)%type.
 (** An edge slot likewise. *)
-Definition eslot := (edge * flip)%type.
+Definition edge_slot := (edge * flip)%type.
 
 (** A cube records which piece occupies each of the twenty slots. Centers are
     fixed by every legal move, so they carry no information. *)
 Record cube := Cube {
-  xURF : cslot; xUFL : cslot; xULB : cslot; xUBR : cslot;
-  xDFR : cslot; xDLF : cslot; xDBL : cslot; xDRB : cslot;
-  yUR : eslot; yUF : eslot; yUL : eslot; yUB : eslot;
-  yDR : eslot; yDF : eslot; yDL : eslot; yDB : eslot;
-  yFR : eslot; yFL : eslot; yBL : eslot; yBR : eslot
+  xURF : corner_slot; xUFL : corner_slot; xULB : corner_slot; xUBR : corner_slot;
+  xDFR : corner_slot; xDLF : corner_slot; xDBL : corner_slot; xDRB : corner_slot;
+  yUR : edge_slot; yUF : edge_slot; yUL : edge_slot; yUB : edge_slot;
+  yDR : edge_slot; yDF : edge_slot; yDL : edge_slot; yDB : edge_slot;
+  yFR : edge_slot; yFL : edge_slot; yBL : edge_slot; yBR : edge_slot
 }.
 
 (** * Rotation arithmetic *)
@@ -61,7 +61,7 @@ Definition flip_add (a b : flip) : flip :=
 
 (** A corner rotated by [t] shows at position [i] the facelet it would
     otherwise show [t] positions earlier. *)
-Definition ci_sub (i : Ci) (t : twist) : Ci :=
+Definition corner_facet_before (i : corner_facet) (t : twist) : corner_facet :=
   match t with
   | T0 => i
   | T1 => match i with C0 => C2 | C1 => C0 | C2 => C1 end
@@ -69,16 +69,16 @@ Definition ci_sub (i : Ci) (t : twist) : Ci :=
   end.
 
 (** The same for an edge. *)
-Definition ei_sub (i : Ei) (f : flip) : Ei :=
+Definition edge_facet_before (i : edge_facet) (f : flip) : edge_facet :=
   match f with
   | F0 => i
   | F1 => match i with E0 => E1 | E1 => E0 end
   end.
 
 (** Rotating a piece already in a slot, used by the turn tables below. *)
-Definition cshift (k : twist) (x : cslot) : cslot :=
+Definition shift_corner (k : twist) (x : corner_slot) : corner_slot :=
   match k with T0 => x | _ => let (X, t) := x in (X, twist_add t k) end.
 
 (** Flipping a piece already in a slot. *)
-Definition eshift (k : flip) (y : eslot) : eslot :=
+Definition shift_edge (k : flip) (y : edge_slot) : edge_slot :=
   match k with F0 => y | _ => let (Y, f) := y in (Y, flip_add f k) end.

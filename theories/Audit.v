@@ -12,12 +12,12 @@ Print Assumptions colors_roundtrip.
 Print Assumptions solve_request_sound.
 Print Assumptions accepted_solution_solves.
 
-Print Assumptions paint_cquarter.
-Print Assumptions paint_crun.
+Print Assumptions paint_quarter_cube.
+Print Assumptions paint_run_cube.
 Print Assumptions to_cubies_paint.
 Print Assumptions paint_to_cubies.
-Print Assumptions crun_element.
-Print Assumptions cparity_element.
+Print Assumptions run_cube_element.
+Print Assumptions cube_parity_element.
 Print Assumptions full_solution.
 Print Assumptions subgroup_solution.
 Print Assumptions phase1_reach_bound.
@@ -30,18 +30,18 @@ Print Assumptions twist_total_valid.
 Print Assumptions flip_total_valid.
 Print Assumptions slice_count_valid.
 Print Assumptions consistentb_admissible.
-Print Assumptions twists_cturn.
-Print Assumptions flips_cturn.
-Print Assumptions slice_mask_cturn.
-Print Assumptions corner_pieces_cturn.
-Print Assumptions ud_pieces_cturn.
-Print Assumptions slice_pieces_cturn.
-Print Assumptions twist_estimate_admissible.
-Print Assumptions cornerperm_estimate_admissible.
-Print Assumptions flip_estimate_admissible.
-Print Assumptions slice_estimate_admissible.
-Print Assumptions udperm_estimate_admissible.
-Print Assumptions sliceperm_estimate_admissible.
+Print Assumptions twists_turn_cube.
+Print Assumptions flips_turn_cube.
+Print Assumptions slice_mask_turn_cube.
+Print Assumptions corner_pieces_turn_cube.
+Print Assumptions ud_pieces_turn_cube.
+Print Assumptions slice_pieces_turn_cube.
+Print Assumptions twist_safe.
+Print Assumptions cornerperm_safe.
+Print Assumptions flip_safe.
+Print Assumptions slice_safe.
+Print Assumptions udperm_safe.
+Print Assumptions sliceperm_safe.
 Print Assumptions in_subgroupb_spec.
 Print Assumptions phase1_sound.
 Print Assumptions phase2_sound.
@@ -73,18 +73,18 @@ Qed.
 
 (** A front quarter turn flips four edges, so it leaves the subgroup the
     second phase searches. This is why the second phase may not use it. *)
-Example front_leaves_subgroup : flips (cturn (Front, CW) csolved) <> repeat F0 12.
+Example front_leaves_subgroup : flips (turn_cube (Front, CW) solved_cube) <> repeat F0 12.
 Proof. vm_compute; discriminate. Qed.
 
 (** Half turns of the same face stay inside it. *)
-Example front_half_keeps_subgroup : in_subgroup (cturn (Front, Half) csolved).
-Proof. apply phase2_move_keeps_subgroup; [reflexivity | apply csolved_in_subgroup]. Qed.
+Example front_half_keeps_subgroup : in_subgroup (turn_cube (Front, Half) solved_cube).
+Proof. apply phase2_move_keeps_subgroup; [reflexivity | apply solved_cube_in_subgroup]. Qed.
 
 (** Reading a scrambled cube's pieces, turning them, and painting back agrees
     with turning the stickers directly. *)
 Example cubies_roundtrip :
   let s := run init_state [(Right, CW); (Up, Half); (Front, CCW)] in
-  paint (cturn (Left, CW) (to_cubies s)) = turn (Left, CW) s.
+  paint (turn_cube (Left, CW) (to_cubies s)) = turn (Left, CW) s.
 Proof. vm_compute; reflexivity. Qed.
 
 (** The monochrome cube fails the centre invariant, so it is not a cube any

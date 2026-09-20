@@ -13,7 +13,7 @@ Import ListNotations.
     edges have no table; what they must hold is forced. *)
 
 (** Finishing the URF slot, with nothing else finished. *)
-Definition domino_urf_table : ctable :=
+Definition domino_urf_table : corner_table :=
   [((URF, T0), []);
    ((UFL, T0), [(Front, Half); (Down, CCW); (Front, Half); (Right, Half); (Down, CCW); (Right, Half); (Down, CW); (Right, Half); (Up, CCW); (Back, Half); (Down, Half); (Back, Half); (Right, Half); (Up, Half); (Front, Half); (Up, CCW)]);
    ((ULB, T0), [(Right, Half); (Up, Half); (Front, Half); (Up, CCW); (Right, Half); (Front, Half); (Up, Half); (Left, Half); (Back, Half); (Down, CCW); (Back, Half); (Left, Half); (Up, Half); (Right, Half); (Up, CCW)]);
@@ -24,7 +24,7 @@ Definition domino_urf_table : ctable :=
    ((DRB, T0), [(Front, Half); (Down, CCW); (Front, Half); (Left, Half); (Up, Half); (Back, Half); (Right, Half); (Up, CCW); (Back, Half); (Left, Half); (Up, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, Half)])].
 
 (** Finishing the UFL slot, with 1 corners already finished. *)
-Definition domino_ufl_table : ctable :=
+Definition domino_ufl_table : corner_table :=
   [((UFL, T0), []);
    ((ULB, T0), [(Left, Half); (Down, CCW); (Back, Half); (Down, CW); (Left, Half); (Front, Half); (Up, CW); (Front, Half); (Up, CCW); (Front, Half); (Right, Half); (Up, Half); (Right, Half); (Up, Half); (Right, Half); (Up, CCW)]);
    ((UBR, T0), [(Front, Half); (Right, Half); (Down, Half); (Back, Half); (Left, Half); (Down, CCW); (Back, Half); (Right, Half); (Up, Half); (Right, Half); (Down, CCW); (Right, Half); (Up, Half); (Front, Half); (Up, CCW)]);
@@ -34,7 +34,7 @@ Definition domino_ufl_table : ctable :=
    ((DRB, T0), [(Up, CCW); (Front, Half); (Down, CCW); (Front, Half); (Left, Half); (Up, Half); (Back, Half); (Right, Half); (Up, CCW); (Back, Half); (Left, Half); (Up, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, CCW)])].
 
 (** Finishing the ULB slot, with 2 corners already finished. *)
-Definition domino_ulb_table : ctable :=
+Definition domino_ulb_table : corner_table :=
   [((ULB, T0), []);
    ((UBR, T0), [(Left, Half); (Down, Half); (Right, Half); (Up, Half); (Right, Half); (Back, Half); (Up, CCW); (Back, Half); (Down, CW); (Left, Half); (Front, Half); (Down, CW); (Right, Half); (Up, CCW); (Right, Half); (Up, CCW)]);
    ((DFR, T0), [(Up, CCW); (Front, Half); (Right, Half); (Up, CCW); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Up, CCW); (Right, Half); (Up, Half); (Front, Half); (Up, CCW); (Front, Half); (Right, Half); (Up, CCW)]);
@@ -43,7 +43,7 @@ Definition domino_ulb_table : ctable :=
    ((DRB, T0), [(Back, Half); (Left, Half); (Down, CW); (Left, Half); (Back, Half); (Up, Half); (Front, Half); (Up, CCW); (Right, Half); (Up, Half); (Front, Half); (Up, CCW); (Front, Half); (Right, Half); (Up, Half)])].
 
 (** Finishing the UBR slot, with 3 corners already finished. *)
-Definition domino_ubr_table : ctable :=
+Definition domino_ubr_table : corner_table :=
   [((UBR, T0), []);
    ((DFR, T0), [(Left, Half); (Back, Half); (Down, CW); (Back, Half); (Down, Half); (Back, Half); (Left, Half); (Up, CCW); (Left, Half); (Down, Half); (Left, Half); (Front, Half); (Up, CCW); (Right, Half); (Up, Half)]);
    ((DLF, T0), [(Down, CCW); (Left, Half); (Down, CCW); (Left, Half); (Down, Half); (Left, Half); (Back, Half); (Down, CW); (Back, Half); (Left, Half); (Up, Half); (Front, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, CCW)]);
@@ -51,25 +51,25 @@ Definition domino_ubr_table : ctable :=
    ((DRB, T0), [(Right, Half); (Back, Half); (Down, CW); (Left, Half); (Down, CCW); (Left, Half); (Down, CW); (Front, Half); (Down, CCW); (Left, Half); (Back, Half); (Up, CCW); (Right, Half); (Up, CW); (Right, Half); (Up, CCW)])].
 
 (** Finishing the DFR slot, with 4 corners already finished. *)
-Definition domino_dfr_table : ctable :=
+Definition domino_dfr_table : corner_table :=
   [((DFR, T0), []);
    ((DLF, T0), [(Front, Half); (Up, CCW); (Front, Half); (Left, Half); (Down, CCW); (Back, Half); (Down, CW); (Left, Half); (Up, CCW); (Right, Half); (Up, Half); (Right, Half); (Front, Half); (Up, Half); (Right, Half); (Up, CCW)]);
    ((DBL, T0), [(Right, Half); (Back, Half); (Up, Half); (Front, Half); (Up, CW); (Left, Half); (Back, Half); (Up, Half); (Front, Half); (Down, CCW); (Front, Half); (Right, Half); (Down, Half); (Right, Half); (Up, CCW)]);
    ((DRB, T0), [(Front, Half); (Up, Half); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Down, CCW); (Right, Half); (Down, CW); (Back, Half); (Up, CCW); (Back, Half); (Right, Half); (Up, CCW); (Right, Half); (Up, CCW)])].
 
 (** Finishing the DLF slot, with 5 corners already finished. *)
-Definition domino_dlf_table : ctable :=
+Definition domino_dlf_table : corner_table :=
   [((DLF, T0), []);
    ((DBL, T0), [(Left, Half); (Down, CCW); (Back, Half); (Right, Half); (Up, CCW); (Right, Half); (Down, CW); (Back, Half); (Up, CCW); (Front, Half); (Up, Half); (Front, Half); (Left, Half); (Up, Half); (Front, Half); (Up, CCW)]);
    ((DRB, T0), [(Right, Half); (Front, Half); (Up, Half); (Front, Half); (Up, CCW); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Up, CW); (Front, Half); (Right, Half); (Up, Half); (Right, Half); (Up, CCW)])].
 
 (** Finishing the DBL slot, with 6 corners already finished. *)
-Definition domino_dbl_table : ctable :=
+Definition domino_dbl_table : corner_table :=
   [((DBL, T0), []);
    ((DRB, T0), [(Back, Half); (Up, CW); (Right, Half); (Down, CCW); (Left, Half); (Down, Half); (Left, Half); (Front, Half); (Up, Half); (Right, Half); (Up, CCW); (Left, Half); (Up, CCW); (Front, Half); (Right, Half); (Up, CCW)])].
 
 (** Finishing the UR slot, with all eight corners already finished. *)
-Definition domino_ur_table : etable :=
+Definition domino_ur_table : edge_table :=
   [((UR, F0), []);
    ((UF, F0), [(Front, Half); (Down, CCW); (Right, Half); (Front, Half); (Down, Half); (Front, Half); (Right, Half); (Down, Half); (Front, Half); (Down, CCW); (Front, Half)]);
    ((UL, F0), [(Front, Half); (Up, Half); (Front, Half); (Up, Half); (Front, Half); (Up, Half)]);
@@ -80,7 +80,7 @@ Definition domino_ur_table : etable :=
    ((DB, F0), [(Down, CCW); (Front, Half); (Down, Half); (Right, Half); (Front, Half); (Down, Half); (Front, Half); (Right, Half); (Down, CCW)])].
 
 (** Finishing the UF slot, with all eight corners and 1 edges already finished. *)
-Definition domino_uf_table : etable :=
+Definition domino_uf_table : edge_table :=
   [((UF, F0), []);
    ((UL, F0), [(Front, Half); (Down, CCW); (Back, Half); (Up, Half); (Left, Half); (Back, Half); (Down, Half); (Front, Half); (Right, Half); (Down, CCW); (Front, Half)]);
    ((UB, F0), [(Up, CCW); (Front, Half); (Up, Half); (Front, Half); (Up, Half); (Front, Half); (Up, CCW)]);
@@ -90,7 +90,7 @@ Definition domino_uf_table : etable :=
    ((DB, F0), [(Front, Half); (Down, CCW); (Front, Half); (Down, Half); (Front, Half); (Down, Half); (Front, Half); (Down, CCW); (Front, Half)])].
 
 (** Finishing the UL slot, with all eight corners and 2 edges already finished. *)
-Definition domino_ul_table : etable :=
+Definition domino_ul_table : edge_table :=
   [((UL, F0), []);
    ((UB, F0), [(Back, Half); (Down, CCW); (Right, Half); (Back, Half); (Up, Half); (Back, Half); (Right, Half); (Down, Half); (Front, Half); (Down, CCW); (Back, Half)]);
    ((DR, F0), [(Right, Half); (Front, Half); (Up, Half); (Front, Half); (Right, Half); (Up, Half); (Front, Half); (Up, Half)]);
@@ -99,7 +99,7 @@ Definition domino_ul_table : etable :=
    ((DB, F0), [(Down, CCW); (Right, Half); (Back, Half); (Up, Half); (Back, Half); (Right, Half); (Down, Half); (Front, Half); (Down, CCW)])].
 
 (** Finishing the UB slot, with all eight corners and 3 edges already finished. *)
-Definition domino_ub_table : etable :=
+Definition domino_ub_table : edge_table :=
   [((UB, F0), []);
    ((DR, F0), [(Up, CCW); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Right, Half); (Up, Half); (Front, Half); (Up, CCW)]);
    ((DF, F0), [(Front, Half); (Up, CCW); (Front, Half); (Up, Half); (Front, Half); (Up, Half); (Front, Half); (Up, CCW); (Front, Half)]);
@@ -107,42 +107,42 @@ Definition domino_ub_table : etable :=
    ((DB, F0), [(Up, CCW); (Down, CCW); (Left, Half); (Back, Half); (Up, CCW); (Down, CCW); (Left, Half); (Front, Half); (Up, Half); (Right, Half)])].
 
 (** Finishing the DR slot, with all eight corners and 4 edges already finished. *)
-Definition domino_dr_table : etable :=
+Definition domino_dr_table : edge_table :=
   [((DR, F0), []);
    ((DF, F0), [(Front, Half); (Up, CCW); (Front, Half); (Up, Half); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Right, Half); (Up, CCW); (Front, Half)]);
    ((DL, F0), [(Back, Half); (Down, Half); (Back, Half); (Up, Half); (Front, Half); (Up, Half)]);
    ((DB, F0), [(Back, Half); (Up, CCW); (Right, Half); (Front, Half); (Up, Half); (Front, Half); (Right, Half); (Up, Half); (Front, Half); (Up, CCW); (Back, Half)])].
 
 (** Finishing the DF slot, with all eight corners and 5 edges already finished. *)
-Definition domino_df_table : etable :=
+Definition domino_df_table : edge_table :=
   [((DF, F0), []);
    ((DL, F0), [(Front, Half); (Up, CCW); (Right, Half); (Back, Half); (Down, Half); (Back, Half); (Right, Half); (Up, Half); (Front, Half); (Up, CCW); (Front, Half)]);
    ((DB, F0), [(Down, CCW); (Front, Half); (Down, Half); (Front, Half); (Down, Half); (Front, Half); (Down, CCW)])].
 
 (** Finishing the DL slot, with all eight corners and 6 edges already finished. *)
-Definition domino_dl_table : etable :=
+Definition domino_dl_table : edge_table :=
   [((DL, F0), []);
    ((DB, F0), [(Back, Half); (Up, CCW); (Back, Half); (Down, Half); (Left, Half); (Back, Half); (Up, Half); (Front, Half); (Right, Half); (Up, CCW); (Back, Half)])].
 
 (** Finishing the FR slot, with all eight corners and 8 edges already finished. *)
-Definition domino_fr_table : etable :=
+Definition domino_fr_table : edge_table :=
   [((FR, F0), []);
    ((FL, F0), [(Down, CCW); (Left, Half); (Up, CCW); (Down, CW); (Front, Half); (Up, CW)]);
    ((BL, F0), [(Down, CW); (Front, Half); (Up, CW); (Down, CCW); (Left, Half); (Up, CCW)]);
    ((BR, F0), [(Down, CW); (Right, Half); (Up, CW); (Down, CCW); (Front, Half); (Up, CCW)])].
 
 (** Finishing the FL slot, with all eight corners and 9 edges already finished. *)
-Definition domino_fl_table : etable :=
+Definition domino_fl_table : edge_table :=
   [((FL, F0), []);
    ((BL, F0), [(Down, CCW); (Back, Half); (Up, CCW); (Down, CW); (Left, Half); (Up, CW)]);
    ((BR, F0), [(Down, CW); (Left, Half); (Up, CW); (Down, CCW); (Back, Half); (Up, CCW)])].
 
 (** The stages in the order they run. *)
-Definition dcorner_stages : list stage := [Cstage URF domino_urf_table 16; Cstage UFL domino_ufl_table 16; Cstage ULB domino_ulb_table 16; Cstage UBR domino_ubr_table 16; Cstage DFR domino_dfr_table 16; Cstage DLF domino_dlf_table 16; Cstage DBL domino_dbl_table 16].
+Definition dcorner_stages : list stage := [CornerStage URF domino_urf_table 16; CornerStage UFL domino_ufl_table 16; CornerStage ULB domino_ulb_table 16; CornerStage UBR domino_ubr_table 16; CornerStage DFR domino_dfr_table 16; CornerStage DLF domino_dlf_table 16; CornerStage DBL domino_dbl_table 16].
 (** The outer edge stages. *)
-Definition dud_stages : list stage := [Estage UR domino_ur_table 11; Estage UF domino_uf_table 11; Estage UL domino_ul_table 11; Estage UB domino_ub_table 10; Estage DR domino_dr_table 11; Estage DF domino_df_table 11; Estage DL domino_dl_table 11].
+Definition dud_stages : list stage := [EdgeStage UR domino_ur_table 11; EdgeStage UF domino_uf_table 11; EdgeStage UL domino_ul_table 11; EdgeStage UB domino_ub_table 10; EdgeStage DR domino_dr_table 11; EdgeStage DF domino_df_table 11; EdgeStage DL domino_dl_table 11].
 (** And the slice stages. *)
-Definition dslice_stages : list stage := [Estage FR domino_fr_table 6; Estage FL domino_fl_table 6].
+Definition dslice_stages : list stage := [EdgeStage FR domino_fr_table 6; EdgeStage FL domino_fl_table 6].
 
 (** The eight outer edge slots, once they are all finished. *)
 Definition ud_done : list edge := [DB; DL; DF; DR; UB; UL; UF; UR].
@@ -153,7 +153,7 @@ Proof. vm_compute; reflexivity. Qed.
 
 (** The corner slots they finish, newest first. *)
 Lemma dcorner_stages_slots :
-  stagesc dcorner_stages = [DBL; DLF; DFR; UBR; ULB; UFL; URF].
+  stage_corners dcorner_stages = [DBL; DLF; DFR; UBR; ULB; UFL; URF].
 Proof. vm_compute; reflexivity. Qed.
 
 (** The outer edge stages check out, given the corners are finished. *)
@@ -161,11 +161,11 @@ Lemma dud_stages_ok : chain_ok restricted all_corner_slots [] dud_stages = true.
 Proof. vm_compute; reflexivity. Qed.
 
 (** The outer edge slots they finish, and no corner slot. *)
-Lemma dud_stages_slots : stagese dud_stages = [DL; DF; DR; UB; UL; UF; UR].
+Lemma dud_stages_slots : stage_edges dud_stages = [DL; DF; DR; UB; UL; UF; UR].
 Proof. vm_compute; reflexivity. Qed.
 
 (** They finish no corner slot. *)
-Lemma dud_stages_corners : stagesc dud_stages = [].
+Lemma dud_stages_corners : stage_corners dud_stages = [].
 Proof. vm_compute; reflexivity. Qed.
 
 (** And the slice stages, given the outer edges are finished. *)
@@ -174,11 +174,11 @@ Proof. vm_compute; reflexivity. Qed.
 
 (** The slice slots they finish, and no corner slot. *)
 Lemma dslice_stages_slots :
-  stagese dslice_stages = [FL; FR].
+  stage_edges dslice_stages = [FL; FR].
 Proof. vm_compute; reflexivity. Qed.
 
 (** They finish no corner slot either. *)
-Lemma dslice_stages_corners : stagesc dslice_stages = [].
+Lemma dslice_stages_corners : stage_corners dslice_stages = [].
 Proof. vm_compute; reflexivity. Qed.
 
 (** The longest answer the tables allow, added up over the stages. *)

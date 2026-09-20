@@ -24,7 +24,7 @@ Definition sliced (c : cube) : Prop := slice_mask c = slice_home.
 Definition in_subgroup (c : cube) : Prop := oriented c /\ sliced c.
 
 (** The solved cube is in the subgroup. *)
-Lemma csolved_in_subgroup : in_subgroup csolved.
+Lemma solved_cube_in_subgroup : in_subgroup solved_cube.
 Proof. repeat split. Qed.
 
 (** * The moves the second phase may use *)
@@ -42,15 +42,15 @@ Definition phase2_move (m : move) : bool :=
     does, the cube stays in the subgroup, so the orientation and slice work of
     the first phase is never undone. *)
 Theorem phase2_move_keeps_subgroup m c :
-  phase2_move m = true -> in_subgroup c -> in_subgroup (cturn m c).
+  phase2_move m = true -> in_subgroup c -> in_subgroup (turn_cube m c).
 Proof.
   destruct m as [f t]; destruct f, t; try discriminate; intros _;
     intros [[Htw Hfl] Hsl]; destruct_cube c;
     unfold in_subgroup, oriented, sliced, slice_mask, twists, flips, edge_pieces in *;
-    cbn [corner_slots edge_slots cturn cquarter
+    cbn [corner_slots edge_slots turn_cube quarter_cube
          xURF xUFL xULB xUBR xDFR xDLF xDBL xDRB
          yUR yUF yUL yUB yDR yDF yDL yDB yFR yFL yBL yBR
-         cshift eshift fst snd map repeat] in *;
+         shift_corner shift_edge fst snd map repeat] in *;
     injection Htw as ?; injection Hfl as ?; injection Hsl as ?; subst;
     repeat split; cbn [twist_add flip_add]; try reflexivity;
     repeat match goal with H : is_slice _ = _ |- _ => rewrite H end; reflexivity.

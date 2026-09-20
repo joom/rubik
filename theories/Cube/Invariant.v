@@ -23,23 +23,23 @@ Definition slice_count (c : cube) : nat := count_occ Bool.bool_dec (slice_mask c
 (** Names for the twenty projections, so a turn becomes a rearrangement. *)
 Ltac expose :=
   unfold twist_total, flip_total, slice_count, slice_mask, twists, flips, edge_pieces;
-  cbn [corner_slots edge_slots cquarter cturn
+  cbn [corner_slots edge_slots quarter_cube turn_cube
        xURF xUFL xULB xUBR xDFR xDLF xDBL xDRB
        yUR yUF yUL yUB yDR yDF yDL yDB yFR yFL yBL yBR
        map fold_right fst snd];
-  rewrite ?cshift_snd, ?eshift_snd, ?cshift_fst, ?eshift_fst;
+  rewrite ?shift_corner_snd, ?shift_edge_snd, ?shift_corner_fst, ?shift_edge_fst;
   cbn [fst snd].
 
 (** A quarter turn moves rotations between corners and adds a fixed amount to
     each, and those amounts cancel. *)
-Lemma twist_total_cquarter f c : twist_total (cquarter f c) = twist_total c.
+Lemma twist_total_quarter_cube f c : twist_total (quarter_cube f c) = twist_total c.
 Proof.
   destruct_cube c; destruct f; expose;
     destruct t1, t2, t3, t4, t5, t6, t7, t8; reflexivity.
 Qed.
 
 (** A quarter turn flips edges in pairs, so the total flip is unchanged. *)
-Lemma flip_total_cquarter f c : flip_total (cquarter f c) = flip_total c.
+Lemma flip_total_quarter_cube f c : flip_total (quarter_cube f c) = flip_total c.
 Proof.
   destruct_cube c; destruct f; expose;
     destruct g1, g2, g3, g4, g5, g6, g7, g8, g9, g10, g11, g12; reflexivity.
@@ -47,7 +47,7 @@ Qed.
 
 (** A quarter turn only moves edges between slots, so it cannot change how
     many slice edges are in the slice. *)
-Lemma slice_count_cquarter f c : slice_count (cquarter f c) = slice_count c.
+Lemma slice_count_quarter_cube f c : slice_count (quarter_cube f c) = slice_count c.
 Proof.
   destruct_cube c; destruct f; expose;
     generalize (is_slice Y1), (is_slice Y2), (is_slice Y3), (is_slice Y4),
@@ -58,57 +58,57 @@ Proof.
 Qed.
 
 (** Each invariant survives any turn amount, since a move is quarter turns. *)
-Lemma twist_total_cturn m c : twist_total (cturn m c) = twist_total c.
+Lemma twist_total_turn_cube m c : twist_total (turn_cube m c) = twist_total c.
 Proof.
-  destruct m as [f t]; destruct t; cbn [cturn];
-    rewrite ?twist_total_cquarter; reflexivity.
+  destruct m as [f t]; destruct t; cbn [turn_cube];
+    rewrite ?twist_total_quarter_cube; reflexivity.
 Qed.
 
 (** The edge flips likewise cancel whatever the turn amount. *)
-Lemma flip_total_cturn m c : flip_total (cturn m c) = flip_total c.
+Lemma flip_total_turn_cube m c : flip_total (turn_cube m c) = flip_total c.
 Proof.
-  destruct m as [f t]; destruct t; cbn [cturn];
-    rewrite ?flip_total_cquarter; reflexivity.
+  destruct m as [f t]; destruct t; cbn [turn_cube];
+    rewrite ?flip_total_quarter_cube; reflexivity.
 Qed.
 
 (** And a move only moves slice edges between slots. *)
-Lemma slice_count_cturn m c : slice_count (cturn m c) = slice_count c.
+Lemma slice_count_turn_cube m c : slice_count (turn_cube m c) = slice_count c.
 Proof.
-  destruct m as [f t]; destruct t; cbn [cturn];
-    rewrite ?slice_count_cquarter; reflexivity.
+  destruct m as [f t]; destruct t; cbn [turn_cube];
+    rewrite ?slice_count_quarter_cube; reflexivity.
 Qed.
 
 (** And therefore any sequence of moves. *)
-Lemma twist_total_crun c p : twist_total (crun c p) = twist_total c.
+Lemma twist_total_run_cube c p : twist_total (run_cube c p) = twist_total c.
 Proof.
   revert c; induction p as [| m p IH]; intro c; [reflexivity |].
-  change (twist_total (crun (cturn m c) p) = twist_total c).
-  rewrite IH; apply twist_total_cturn.
+  change (twist_total (run_cube (turn_cube m c) p) = twist_total c).
+  rewrite IH; apply twist_total_turn_cube.
 Qed.
 
 (** The flip total survives a whole sequence. *)
-Lemma flip_total_crun c p : flip_total (crun c p) = flip_total c.
+Lemma flip_total_run_cube c p : flip_total (run_cube c p) = flip_total c.
 Proof.
   revert c; induction p as [| m p IH]; intro c; [reflexivity |].
-  change (flip_total (crun (cturn m c) p) = flip_total c).
-  rewrite IH; apply flip_total_cturn.
+  change (flip_total (run_cube (turn_cube m c) p) = flip_total c).
+  rewrite IH; apply flip_total_turn_cube.
 Qed.
 
 (** So does the number of slice edges in the slice. *)
-Lemma slice_count_crun c p : slice_count (crun c p) = slice_count c.
+Lemma slice_count_run_cube c p : slice_count (run_cube c p) = slice_count c.
 Proof.
   revert c; induction p as [| m p IH]; intro c; [reflexivity |].
-  change (slice_count (crun (cturn m c) p) = slice_count c).
-  rewrite IH; apply slice_count_cturn.
+  change (slice_count (run_cube (turn_cube m c) p) = slice_count c).
+  rewrite IH; apply slice_count_turn_cube.
 Qed.
 
 (** * What a physically valid cube must satisfy *)
 
 (** Reading the cubies off a scramble is the same as scrambling the cubies. *)
-Lemma to_cubies_scramble p : to_cubies (run init_state p) = crun csolved p.
+Lemma to_cubies_scramble p : to_cubies (run init_state p) = run_cube solved_cube p.
 Proof.
-  replace (run init_state p) with (paint (crun csolved p))
-    by (rewrite paint_crun, paint_csolved; reflexivity).
+  replace (run init_state p) with (paint (run_cube solved_cube p))
+    by (rewrite paint_run_cube, paint_solved_cube; reflexivity).
   apply to_cubies_paint.
 Qed.
 
@@ -116,20 +116,20 @@ Qed.
     place is therefore not a cube any scramble can produce. *)
 Theorem twist_total_valid s : valid_state s -> twist_total (to_cubies s) = T0.
 Proof.
-  intros [p <-]; rewrite to_cubies_scramble, twist_total_crun; reflexivity.
+  intros [p <-]; rewrite to_cubies_scramble, twist_total_run_cube; reflexivity.
 Qed.
 
 (** Nor a net edge flip, so a single flipped edge is likewise unreachable. *)
 Theorem flip_total_valid s : valid_state s -> flip_total (to_cubies s) = F0.
 Proof.
-  intros [p <-]; rewrite to_cubies_scramble, flip_total_crun; reflexivity.
+  intros [p <-]; rewrite to_cubies_scramble, flip_total_run_cube; reflexivity.
 Qed.
 
 (** And the four slice edges are always somewhere, so the slice coordinate
     ranges over choices of four slots out of twelve. *)
 Theorem slice_count_valid s : valid_state s -> slice_count (to_cubies s) = 4.
 Proof.
-  intros [p <-]; rewrite to_cubies_scramble, slice_count_crun; reflexivity.
+  intros [p <-]; rewrite to_cubies_scramble, slice_count_run_cube; reflexivity.
 Qed.
 
 (** * The fourth invariant: parity
@@ -156,27 +156,27 @@ Definition edge_rank (Y : edge) : nat :=
   end.
 
 (** Where the corners sit and where the edges sit, as numbers. *)
-Definition cranks (c : cube) : list nat := map corner_rank (corner_pieces c).
+Definition corner_ranks (c : cube) : list nat := map corner_rank (corner_pieces c).
 
 (** And where the edges sit. *)
-Definition eranks (c : cube) : list nat := map edge_rank (edge_pieces c).
+Definition edge_ranks (c : cube) : list nat := map edge_rank (edge_pieces c).
 
 (** A cube whose pieces are all different, which every reachable cube is. *)
-Definition wellformed (c : cube) : Prop := NoDup (cranks c) /\ NoDup (eranks c).
+Definition wellformed (c : cube) : Prop := NoDup (corner_ranks c) /\ NoDup (edge_ranks c).
 
 (** The combined parity of the two rearrangements. *)
-Definition cparity (c : cube) : bool := xorb (parity (cranks c)) (parity (eranks c)).
+Definition cube_parity (c : cube) : bool := xorb (parity (corner_ranks c)) (parity (edge_ranks c)).
 
 (** Expose both lists of a turned cube as rearrangements of the original. *)
 Ltac expose_ranks :=
-  unfold wellformed, cparity, cranks, eranks, corner_pieces, edge_pieces in *;
-  cbn [corner_slots edge_slots cquarter
+  unfold wellformed, cube_parity, corner_ranks, edge_ranks, corner_pieces, edge_pieces in *;
+  cbn [corner_slots edge_slots quarter_cube
        xURF xUFL xULB xUBR xDFR xDLF xDBL xDRB
        yUR yUF yUL yUB yDR yDF yDL yDB yFR yFL yBL yBR map] in *;
-  rewrite ?cshift_fst, ?eshift_fst; cbn [fst map] in *.
+  rewrite ?shift_corner_fst, ?shift_edge_fst; cbn [fst map] in *.
 
 (** A turn keeps the pieces all different. *)
-Lemma wellformed_cquarter f c : wellformed c -> wellformed (cquarter f c).
+Lemma wellformed_quarter_cube f c : wellformed c -> wellformed (quarter_cube f c).
 Proof.
   destruct_cube c; intros [Hc He]; destruct f; expose_ranks; split.
   - apply (nodup_corners_Up _ _ _ _ _ _ _ _ Hc).
@@ -194,7 +194,7 @@ Proof.
 Qed.
 
 (** And it flips both parities, so their combination is unchanged. *)
-Lemma cparity_cquarter f c : wellformed c -> cparity (cquarter f c) = cparity c.
+Lemma cube_parity_quarter_cube f c : wellformed c -> cube_parity (quarter_cube f c) = cube_parity c.
 Proof.
   destruct_cube c; intros [Hc He]; destruct f; expose_ranks.
   - rewrite (parity_corners_Up _ _ _ _ _ _ _ _ Hc), (parity_edges_Up _ _ _ _ _ _ _ _ _ _ _ _ He);
@@ -212,44 +212,44 @@ Proof.
 Qed.
 
 (** A whole move is one, two or three quarter turns. *)
-Lemma wellformed_cturn m c : wellformed c -> wellformed (cturn m c).
+Lemma wellformed_turn_cube m c : wellformed c -> wellformed (turn_cube m c).
 Proof.
-  destruct m as [f t]; destruct t; cbn [cturn]; intro H;
-    repeat apply wellformed_cquarter; exact H.
+  destruct m as [f t]; destruct t; cbn [turn_cube]; intro H;
+    repeat apply wellformed_quarter_cube; exact H.
 Qed.
 
 (** And a whole move, being one, two or three of them. *)
-Lemma cparity_cturn m c : wellformed c -> cparity (cturn m c) = cparity c.
+Lemma cube_parity_turn_cube m c : wellformed c -> cube_parity (turn_cube m c) = cube_parity c.
 Proof.
-  destruct m as [f t]; destruct t; cbn [cturn]; intro H;
-    rewrite ?cparity_cquarter by auto using wellformed_cquarter; reflexivity.
+  destruct m as [f t]; destruct t; cbn [turn_cube]; intro H;
+    rewrite ?cube_parity_quarter_cube by auto using wellformed_quarter_cube; reflexivity.
 Qed.
 
 (** And a whole sequence. *)
-Lemma wellformed_crun c p : wellformed c -> wellformed (crun c p).
+Lemma wellformed_run_cube c p : wellformed c -> wellformed (run_cube c p).
 Proof.
   revert c; induction p as [| m p IH]; intros c H; [exact H |].
-  change (crun c (m :: p)) with (crun (cturn m c) p).
-  apply IH, wellformed_cturn, H.
+  change (run_cube c (m :: p)) with (run_cube (turn_cube m c) p).
+  apply IH, wellformed_turn_cube, H.
 Qed.
 
 (** And a whole sequence. *)
-Lemma cparity_crun c p : wellformed c -> cparity (crun c p) = cparity c.
+Lemma cube_parity_run_cube c p : wellformed c -> cube_parity (run_cube c p) = cube_parity c.
 Proof.
   revert c; induction p as [| m p IH]; intros c H; [reflexivity |].
-  change (crun c (m :: p)) with (crun (cturn m c) p).
-  rewrite (IH (cturn m c) (wellformed_cturn m c H)); apply cparity_cturn, H.
+  change (run_cube c (m :: p)) with (run_cube (turn_cube m c) p).
+  rewrite (IH (turn_cube m c) (wellformed_turn_cube m c H)); apply cube_parity_turn_cube, H.
 Qed.
 
 (** The solved cube has all pieces different and even parity. *)
-Lemma wellformed_csolved : wellformed csolved.
+Lemma wellformed_solved_cube : wellformed solved_cube.
 Proof.
-  split; cbn [cranks eranks corner_pieces edge_pieces corner_slots edge_slots
-              csolved map fst]; repeat constructor; simpl; intuition discriminate.
+  split; cbn [corner_ranks edge_ranks corner_pieces edge_pieces corner_slots edge_slots
+              solved_cube map fst]; repeat constructor; simpl; intuition discriminate.
 Qed.
 
 (** The solved cube is in order, so its parity is even, *)
-Lemma cparity_csolved : cparity csolved = false.
+Lemma cube_parity_solved_cube : cube_parity solved_cube = false.
 Proof. reflexivity. Qed.
 
 (** So every cube a sequence can produce has all pieces different and even
@@ -257,12 +257,12 @@ Proof. reflexivity. Qed.
     sequence produces it: that is what the last step of a solving method needs
     in order to know it is already finished. *)
 Theorem wellformed_element p : wellformed (element p).
-Proof. apply wellformed_crun, wellformed_csolved. Qed.
+Proof. apply wellformed_run_cube, wellformed_solved_cube. Qed.
 
 (** and so is that of every cube a sequence produces. A cube with exactly two
     pieces exchanged is odd, so no sequence produces it. *)
-Theorem cparity_element p : cparity (element p) = false.
+Theorem cube_parity_element p : cube_parity (element p) = false.
 Proof.
-  unfold element; rewrite cparity_crun by apply wellformed_csolved;
-    apply cparity_csolved.
+  unfold element; rewrite cube_parity_run_cube by apply wellformed_solved_cube;
+    apply cube_parity_solved_cube.
 Qed.
