@@ -8,7 +8,7 @@ GENERATED := native/generated
 MODULES := Cube.Sticker Cube.TurnTables Cube.BasicRubik Cube.Geometry Cube.CubieDefs Cube.CubieTables Cube.Cubie Cube.Group Cube.Parity Cube.ParityTables Cube.Subgroup Cube.Invariant Bounds.Chain Bounds.ChainTables Bounds.Domino Bounds.DominoTables Bounds.Solvable Search.Prune Search.Admissible Search.Tables Search.Phase1 Search.Phase2 Search.Solve Viewer Audit
 
 .DEFAULT_GOAL := all
-.PHONY: all extract check check-generated check-chain tests html install clean web
+.PHONY: all extract check check-generated check-chain check-solver tests html install clean web
 
 # Build and audit the proofs. Needs no C++ toolchain and no Crane.
 all:
@@ -34,6 +34,13 @@ check-generated:
 #   cmake --build build/native --target solve_tool
 check-chain:
 	python3 scripts/generate_chain.py --check
+
+# Exercise the built solver on scrambles it has never seen and multiply every
+# answer back out. This is the one check that covers extraction, the C++
+# toolchain and the bindings, none of which the kernel can see. Needs the
+# batch solver, as above.
+check-solver:
+	python3 scripts/check_solver.py
 
 # Recheck the compiled proofs with the kernel, independently of the build.
 check: all check-generated

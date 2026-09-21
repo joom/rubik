@@ -1,5 +1,9 @@
 name: Proofs
 
+# The kernel's own verdict: the proofs compile, nothing is assumed, and the
+# generated tables checked into theories/ are the ones the generators produce.
+# Everything past the kernel is covered by native.yml.
+
 on:
   push:
     branches:
@@ -25,9 +29,15 @@ jobs:
           opam_file: 'rocq-rubik.opam'
           custom_image: ${{ matrix.image }}
           before_script: |
+            startGroup "Take ownership of the checkout"
+              # The runner checks the sources out as itself; the image builds
+              # as another user, and dune cannot create _build without this.
+              sudo chown -R "$(id -u):$(id -g)" .
+            endGroup
+          script: |
             startGroup "Kernel and generated-table checks"
               sudo apt-get install -y python3
-              opam exec -- make -C "$WORKDIR" check
+              opam exec -- make check
             endGroup
 
 

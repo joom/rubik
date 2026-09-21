@@ -1,6 +1,7 @@
 # Rubik
 
 [![Proofs](https://github.com/joom/rubik/actions/workflows/proofs.yml/badge.svg)](https://github.com/joom/rubik/actions/workflows/proofs.yml)
+[![Native](https://github.com/joom/rubik/actions/workflows/native.yml/badge.svg)](https://github.com/joom/rubik/actions/workflows/native.yml)
 
 A certified 3×3×3 Rubik’s cube solver.
 
@@ -31,14 +32,15 @@ over `dune build`.
 | `make` | Builds the proofs in [theories/](theories). |
 | `make check` | Also rechecks them with `rocqchk`, independently of the build, and tests that the generated tables are not stale. |
 | `make check-chain` | The one slow staleness test, which needs the batch solver. |
+| `make check-solver` | Solves fresh scrambles with the built solver and checks every answer. |
 | `make extract` | Extracts the viewer to C++ under `native/generated/`. |
 | `make web` | Builds the WebAssembly bundle into [docs/](docs). |
 | `make html` | Renders the Rocqdoc. |
 | `make install` | Installs the `Rubik` namespace. |
 
-Python 3 is needed only for the generated tables. Everything but `make`,
-`make check`, `make html` and `make install` needs the Crane submodule and a
-C++ toolchain.
+Python 3 is needed for the generated tables and for `make check-solver`.
+Everything but `make`, `make check`, `make html` and `make install` needs the
+Crane submodule and a C++ toolchain.
 
 ## The cube and its moves
 
@@ -83,7 +85,7 @@ theories/Search/    the two-phase search the program runs
 theories/Viewer.v   the value-only boundary the native viewer talks to
 theories/Audit.v    executable regressions and the assumption audit
 native/             the viewer itself, with its bindings under Bindings/
-scripts/            the generators for the tables checked into theories/
+scripts/            the table generators, and the check on the built solver
 tools/              a batch solver, used only to produce those tables
 web/ docs/          the WebAssembly build and the page that serves it
 ```
@@ -115,6 +117,18 @@ Note the loop in the fourth row. The tables that prove the search complete
 were found by running the search. That is not circular, because nothing it
 answered is taken on its word: each answer is recomputed in Rocq, and the
 proof would go through the same way if the sequences had been guessed.
+
+What that diagram does not cover is everything past the kernel. Extraction,
+the C++ toolchain and the hand-written bindings are all outside the proofs,
+so the proofs can be green while the program this repository ships is broken.
+The two workflows split along exactly that line:
+[proofs.yml](.github/workflows/proofs.yml) compiles the proofs on Rocq 9.0 and
+9.1, rechecks them with `rocqchk` and tests the generated tables for
+staleness; [native.yml](.github/workflows/native.yml) extracts the viewer,
+builds it, and makes the extracted solver answer scrambles it has never seen,
+multiplying every answer back out against the Python cube model. Run that last
+one yourself with `make check-solver`. The slow chain regeneration is a manual
+input on the same workflow.
 
 From there the proofs become the program:
 
@@ -544,6 +558,9 @@ means rerunning it. Three of them are fast enough to live in `make check`; the
 fourth has its own target because it calls the solver a few hundred times.
 [cubelib.py](scripts/cubelib.py) is the shared cube model the last two read
 the move tables through, so no generator carries its own copy.
+[check_solver.py](scripts/check_solver.py) is not a generator: it reads the
+same model to check what the built solver answers, which is the one test that
+covers extraction and the C++ build.
 
 ## Provenance
 

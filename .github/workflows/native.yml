@@ -1,0 +1,64 @@
+name: Native
+
+# What the kernel cannot see. Extraction, the C++ toolchain and the hand-written
+# bindings all sit outside the proofs, so the proofs can be green while the
+# program this repository ships is broken. This job extracts the viewer, builds
+# it, and makes the extracted solver answer scrambles it has never seen.
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - '**'
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: 'Also rebuild the solving-chain tables (about ten minutes)'
+        type: boolean
+        default: false
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Crane, the extraction plugin, is built in place from the submodule.
+          submodules: recursive
+      - uses: coq-community/docker-coq-action@v1
+        with:
+          opam_file: 'rocq-rubik.opam'
+          # Crane is pinned to Rocq 9.0, so extraction is checked only there.
+          custom_image: 'rocq/rocq-prover:9.0'
+          before_script: |
+            startGroup "Take ownership of the checkout"
+              sudo chown -R "$(id -u):$(id -g)" .
+            endGroup
+            startGroup "What Crane needs"
+              # Crane's own theories; its plugin needs nothing but rocq-runtime.
+              opam install -y coq-itree coq-paco coq-ext-lib
+            endGroup
+            startGroup "What the C++ build needs"
+              # raylib is fetched and compiled by CMake, hence the X11 headers.
+              sudo apt-get update -y
+              sudo apt-get install -y cmake python3 \
+                libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev \
+                libxcursor-dev libxi-dev
+            endGroup
+          script: |
+            startGroup "Extract the viewer to C++"
+              opam exec -- make extract
+            endGroup
+            startGroup "Build the viewer and the batch solver"
+              cmake -S . -B build/native -DCMAKE_BUILD_TYPE=Release
+              cmake --build build/native --parallel 2
+            endGroup
+            startGroup "Solve fresh scrambles and check every answer"
+              opam exec -- make check-solver
+            endGroup
+            startGroup "Rebuild the solving-chain tables"
+              # Only on request: it solves several hundred cubes.
+              if [ "${{ inputs.chain }}" = "true" ]; then opam exec -- make check-chain; else echo "skipped; run this workflow manually with 'chain' set"; fi
+            endGroup
