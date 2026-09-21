@@ -43,7 +43,9 @@ jobs:
             startGroup "What the C++ build needs"
               # raylib is fetched and compiled by CMake, hence the X11 headers.
               sudo apt-get update -y
-              sudo apt-get install -y cmake python3 \
+              # clang-format only tidies the generated C++, but without it
+              # what CI builds is not byte-for-byte what a local run produces.
+              sudo apt-get install -y cmake clang-format python3 \
                 libgl1-mesa-dev libx11-dev libxrandr-dev libxinerama-dev \
                 libxcursor-dev libxi-dev
             endGroup

@@ -32,6 +32,8 @@ run-test: [make "check"]
 depends: [
   "dune" {>= "3.21"}
   "rocq-core" {>= "9.0"}
+  # dune's Coq build language invokes "coqc", which rocq-core does not install.
+  "coq-core" {>= "9.0"}
   "rocq-stdlib" {>= "9.0"}
   "conf-python-3" {with-test}
 ]

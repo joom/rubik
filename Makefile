@@ -17,11 +17,16 @@ all:
 # Extract the viewer to C++ and publish it where CMake expects to find it.
 # The C++ files are a side effect of compiling Extract.v rather than declared
 # targets, so that compilation has to run instead of being restored from cache.
+# Crane writes them into a directory named after the theory, Rubik.Native, so
+# the capital N is not a typo: on a case-sensitive filesystem that is not the
+# same place as dune's own lowercase native/.
+EXTRACTED := $(BUILD)/Native
+
 extract:
 	rm -f $(BUILD)/native/Extract.vo
 	$(DUNE) build --cache=disabled native/Extract.vo
 	@mkdir -p $(GENERATED)
-	cp $(BUILD)/native/rubik.h $(BUILD)/native/rubik.cpp $(GENERATED)/
+	cp $(EXTRACTED)/rubik.h $(EXTRACTED)/rubik.cpp $(GENERATED)/
 
 # The three fast generators: each rebuilds its file from scratch and compares.
 check-generated:

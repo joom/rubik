@@ -122,10 +122,10 @@ What that diagram does not cover is everything past the kernel. Extraction,
 the C++ toolchain and the hand-written bindings are all outside the proofs,
 so the proofs can be green while the program this repository ships is broken.
 The two workflows split along exactly that line:
-[proofs.yml](.github/workflows/proofs.yml) compiles the proofs on Rocq 9.0 and
-9.1, rechecks them with `rocqchk` and tests the generated tables for
-staleness; [native.yml](.github/workflows/native.yml) extracts the viewer,
-builds it, and makes the extracted solver answer scrambles it has never seen,
+[proofs.yml](.github/workflows/proofs.yml) compiles the proofs on Rocq 9.0,
+rechecks them with `rocqchk` and tests the generated tables for staleness;
+[native.yml](.github/workflows/native.yml) extracts the viewer, builds it, and
+makes the extracted solver answer scrambles it has never seen,
 multiplying every answer back out against the Python cube model. Run that last
 one yourself with `make check-solver`. The slow chain regeneration is a manual
 input on the same workflow.

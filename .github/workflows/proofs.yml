@@ -3,6 +3,8 @@ name: Proofs
 # The kernel's own verdict: the proofs compile, nothing is assumed, and the
 # generated tables checked into theories/ are the ones the generators produce.
 # Everything past the kernel is covered by native.yml.
+#
+# Rocq 9.0 only, which is what Crane pins the rest of the repository to.
 
 on:
   push:
@@ -16,18 +18,12 @@ jobs:
   check:
     # the OS must be GNU/Linux to be able to use the docker-coq-action
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        image:
-          - 'rocq/rocq-prover:9.0'
-          - 'rocq/rocq-prover:9.1'
-      fail-fast: false
     steps:
       - uses: actions/checkout@v4
       - uses: coq-community/docker-coq-action@v1
         with:
           opam_file: 'rocq-rubik.opam'
-          custom_image: ${{ matrix.image }}
+          custom_image: 'rocq/rocq-prover:9.0'
           before_script: |
             startGroup "Take ownership of the checkout"
               # The runner checks the sources out as itself; the image builds
